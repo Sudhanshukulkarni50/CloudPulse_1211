@@ -1,5 +1,6 @@
 InstanceID: i-022d26bb6f22a5bad
 Instance Name: 141-CloudPulse-Instance
+Enabled Detailed Monitoring for Instance Created
 Role Assigned: 141-CloudPulse-Lambda-Role
-Lambda Function Assigned: 141-CloudPulse-Control-Function
- 
+Added Permissions/access to role: AmazonEC2FullAccess, AWSLambdaBasicExecutionRole, CloudWatchReadOnlyAccess
+Lambda Function Created: 141-CloudPulse-Control-Function
