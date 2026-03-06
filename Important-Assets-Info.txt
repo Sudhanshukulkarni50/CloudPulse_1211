@@ -1,6 +1,7 @@
-InstanceID: i-022d26bb6f22a5bad
-Instance Name: 141-CloudPulse-Instance
-Enabled Detailed Monitoring for Instance Created
-Role Assigned: 141-CloudPulse-Lambda-Role
-Added Permissions/access to role: AmazonEC2FullAccess, AWSLambdaBasicExecutionRole, CloudWatchReadOnlyAccess
-Lambda Function Created: 141-CloudPulse-Control-Function
+1) InstanceID: i-022d26bb6f22a5bad
+2) Instance Name: 141-CloudPulse-Instance
+3) Enabled Detailed Monitoring for Instance Created
+4) Role Assigned: 141-CloudPulse-Lambda-Role
+5) Added Permissions/access to role: AmazonEC2FullAccess, AWSLambdaBasicExecutionRole, CloudWatchReadOnlyAccess
+6) Lambda Function Created: 141-CloudPulse-Control-Function
+7) Imported libraries and created AWS clients to talk with services
