@@ -1,2 +1,5 @@
 InstanceID: i-022d26bb6f22a5bad
-Instance Name: CloudPulse-Instance
+Instance Name: 141-CloudPulse-Instance
+Role Assigned: 141-CloudPulse-Lambda-Role
+Lambda Function Assigned: 141-CloudPulse-Control-Function
+ 
