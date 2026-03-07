@@ -34,9 +34,23 @@ def get_cpu_metrics():
 
     return round(avg_cpu,2)
 
+def classify_instance(cpu):
+
+    if cpu<20:
+        return "Underutilised", "Should stop instance to save cost"
+    elif cpu<=70:
+        return "Healthy", "No action required"
+    else:
+        return "Overutilised","Should upgrade instance type"
+
 def lambda_handler(event, context):
 
     cpu_avg = get_cpu_metric()
+    classification, recommendation = classify_instance(cpu_avg)
+    
     return {
-        "Average_CPU_Last_7_Days": cpu_avg
+        "InstanceID":INSTANCE_ID,
+        "Average_CPU_Last_7_Days": cpu_avg,
+        "Classification": classification,
+        "Recommendation": recommendation
     }
