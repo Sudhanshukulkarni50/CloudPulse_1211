@@ -34,6 +34,40 @@ def get_cpu_metrics():
 
     return round(avg_cpu,2)
 
+def get_recent_cpu_metrics():
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours = 24)
+
+    response = cloudwatch.get_metric_statistics(
+        Namespace='AWS/EC2',
+        MetricName='CPUUtilization',
+        Dimensions=[
+            {
+                'Name': 'InstanceId',
+                'Value': INSTANCE_ID
+            },
+        ],
+        StartTime=start_time,
+        EndTime=end_time,
+        Period=3600,
+        Statistics=['Average']
+    )
+
+    return response['Datapoints']
+
+def predict_future_cpu(datapoints):
+    if not datapoints:
+        return 0
+
+    datapoints = sorted(datapoints, key=lambda x: x['Timestamp'])
+
+    last_values = datapoints[-5:]
+
+    predicted_cpu = sum([p['Average'] for p in last_values]) / len(last_values)
+
+    return round(predicted_cpu, 2)
+
+    
 def classify_instance(cpu):
 
     if cpu<20:
@@ -45,12 +79,17 @@ def classify_instance(cpu):
 
 def lambda_handler(event, context):
 
-    cpu_avg = get_cpu_metric()
+    cpu_avg = get_cpu_metrics()
     classification, recommendation = classify_instance(cpu_avg)
+
+    recent_data = get_recent_cpu_metrics()
+
+    predicted_cpu = predict_future_cpu(recent_data)
     
     return {
         "InstanceID":INSTANCE_ID,
         "Average_CPU_Last_7_Days": cpu_avg,
+        "Predicted_CPU_Next_Hours": predicted_cpu,
         "Classification": classification,
         "Recommendation": recommendation
     }
