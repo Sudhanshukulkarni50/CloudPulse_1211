@@ -1,6 +1,9 @@
 import boto3
 from datetime import datetime, timedelta
 
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('CloudPulse_Insights')
+
 ec2 = boto3.client('ec2')
 cloudwatch = boto3.client('cloudwatch')
 
@@ -85,6 +88,19 @@ def lambda_handler(event, context):
     recent_data = get_recent_cpu_metrics()
 
     predicted_cpu = predict_future_cpu(recent_data)
+
+    fromm datetime import datetime
+
+    table.put_item(
+        Item = {
+            "Instance_ID": INSTANCEID,
+            "Timestamp": str(datetime.utcnow()),
+            "Average_CPU_Last_7_Days": str(cpu_avg),
+            "Predicted_CPU": str(predicted_cpu),
+            "Classification": classification,
+            "Recommendation": recommendation
+        }
+    )
     
     return {
         "InstanceID":INSTANCE_ID,
