@@ -6,3 +6,7 @@
 6) Lambda Function Created: 141-CloudPulse-Control-Function
 7) Imported libraries and created AWS clients to talk with services
 8) Created Table in DynamoDb: CloudPulse_Insights--> Now we can store the recommendation and CPU metrics in a table
+9) To automate the CloudPulse monitoring system used Amazon EventBridge Scheduler to trigger the Lambda function every 12 hours
+Scheduler_Name: CloudPulse-Scheduler
+10) For testing purposes, we temporarily changed the schedule to run every 1 minute to verify that the automation was working correctly.
+11) During these test runs, the Lambda function executed successfully and stored the analysis results in a csv file.
