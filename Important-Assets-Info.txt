@@ -10,3 +10,5 @@
 Scheduler_Name: CloudPulse-Scheduler
 10) For testing purposes, we temporarily changed the schedule to run every 1 minute to verify that the automation was working correctly.
 11) During these test runs, the Lambda function executed successfully and stored the analysis results in a csv file.
+12) Created One SNS Topic so that whever CPU Gets OverUtilised we will get an email containing a message and a subject
+13) Added sns as client in the Lambda Function code and set the message and subject that would be delivered via mail.

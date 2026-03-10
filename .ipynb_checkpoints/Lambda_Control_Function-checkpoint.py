@@ -1,6 +1,9 @@
 import boto3
 from datetime import datetime, timedelta
 
+sns = boto3.client('sns')
+SNS_TOPIC_ARN = "arn:aws:sns:ap-south-1:504115868738:CloudPulse_Alerts"
+
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('CloudPulse_Insights')
 
@@ -100,6 +103,26 @@ def lambda_handler(event, context):
             "Classification": classification,
             "Recommendation": recommendation
         }
+    )
+    if classification == "Overutilized":
+        sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Subject="CloudPulse Alert: EC2 Instance Overutilized",
+            Message=f"""
+               CloudPulse Monitoring Alert
+
+               Instance ID: {INSTANCE_ID}
+
+               Average CPU (Last 7 Days): {cpu_avg}%
+               Predicted CPU (Next Hours): {predicted_cpu}%
+
+               Status: Overutilized
+
+               Recommendation:
+               {recommendation}
+
+               Timestamp: {datetime.utcnow()}
+           """
     )
     
     return {
