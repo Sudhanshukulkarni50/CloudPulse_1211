@@ -3,7 +3,7 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "id": "eabbdd02-4b53-4133-a2f9-651dd45076c8",
+   "id": "f2f2dbc1-38c5-4827-bede-ecf4ab0e6b02",
    "metadata": {},
    "outputs": [],
    "source": [
@@ -14,7 +14,6 @@
     "dynamodb = boto3.resource('dynamodb')\n",
     "table = dynamodb.Table('CloudPulse_Insights')\n",
     "\n",
-    "# ✅ Fix 1: Custom JSON encoder to handle Decimal types from DynamoDB\n",
     "class DecimalEncoder(json.JSONEncoder):\n",
     "    def default(self, obj):\n",
     "        if isinstance(obj, Decimal):\n",
@@ -23,7 +22,6 @@
     "\n",
     "def lambda_handler(event, context):\n",
     "\n",
-    "    # ✅ Fix 2: Paginate scan so you never miss records\n",
     "    items = []\n",
     "    response = table.scan()\n",
     "    items.extend(response['Items'])\n",
@@ -32,7 +30,6 @@
     "        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])\n",
     "        items.extend(response['Items'])\n",
     "\n",
-    "    # ✅ Fix 3: Use DecimalEncoder so json.dumps never crashes\n",
     "    return {\n",
     "        'statusCode': 200,\n",
     "        'headers': {\n",
