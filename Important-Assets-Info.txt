@@ -15,3 +15,5 @@ Scheduler_Name: CloudPulse-Scheduler
 14) Created and API using API Gateway and connected it with lambda functions to fetch data from the DunamoDB Table
 15) Then created API routes for insights fetching and conected it with other Lambda Function to visualise through a dashboard.
 16) Then created another Lambda function to start and stop EC2 instances through buttons on the dashboard interface.
+17) Created a DynamoDb table to save the alerts data in the table created using the lambda function
+18) Also added routes to transfer through an API Gateway
