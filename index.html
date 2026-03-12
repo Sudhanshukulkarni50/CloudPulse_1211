@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CloudPulse – Intelligent Cloud Monitoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-deep:    #050c14;
+    --bg-panel:   #081626;
+    --bg-card:    #0b1e35;
+    --bg-hover:   #0f2848;
+    --border:     #1a3a5c;
+    --border-glow:#1e90ff22;
+    --accent:     #00d4ff;
+    --accent2:    #0066ff;
+    --green:      #00ff88;
+    --yellow:     #ffd600;
+    --red:        #ff3d6e;
+    --orange:     #ff7c30;
+    --text-pri:   #e8f4ff;
+    --text-sec:   #6a9cc0;
+    --text-dim:   #344f6a;
+    --glow-blue:  0 0 18px #00d4ff55, 0 0 40px #00d4ff22;
+    --glow-green: 0 0 18px #00ff8855, 0 0 40px #00ff8822;
+    --glow-red:   0 0 18px #ff3d6e55, 0 0 40px #ff3d6e22;
+    --glow-yell:  0 0 18px #ffd60055, 0 0 40px #ffd60022;
+    --radius:     10px;
+    --transition: 0.25s cubic-bezier(.4,0,.2,1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-pri);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── SCANLINE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,212,255,.018) 3px,
+      rgba(0,212,255,.018) 4px
+    );
+  }
+
+  /* ─── GRID BG ─── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(0,212,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-panel); }
+  ::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 3px; }
+
+  /* ─── WRAPPER ─── */
+  .wrapper { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 24px 48px; }
+
+  /* ─── HEADER ─── */
+  header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+    padding: 28px 0 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-group { display: flex; align-items: center; gap: 16px; }
+  .logo-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #0044aa, #00d4ff);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--glow-blue);
+    font-size: 22px;
+  }
+  .logo-text h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 26px; font-weight: 700; letter-spacing: 2px;
+    background: linear-gradient(90deg, #00d4ff, #ffffff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-text p { color: var(--text-sec); font-size: 12px; letter-spacing: 1px; margin-top: 2px; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 20px;
+    background: rgba(0,255,136,.08); border: 1px solid rgba(0,255,136,.25);
+    font-size: 12px; color: var(--green); letter-spacing: 1px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); box-shadow: var(--glow-green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .4; transform: scale(.7); }
+  }
+
+  .timestamp { font-family: 'Share Tech Mono', monospace; color: var(--text-dim); font-size: 12px; }
+
+  .btn-refresh {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none;
+    background: linear-gradient(135deg, #003399, #0066cc);
+    color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 14px;
+    font-weight: 600; letter-spacing: 1px;
+    box-shadow: 0 0 12px #0066cc55;
+    transition: var(--transition);
+  }
+  .btn-refresh:hover { box-shadow: 0 0 20px #0066ccaa; transform: translateY(-1px); }
+  .btn-refresh.spinning svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── ARCH STRIP ─── */
+  .arch-strip {
+    display: flex; align-items: center; justify-content: center; gap: 0;
+    margin: 20px 0; padding: 14px 24px; overflow-x: auto;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .arch-node {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 0 12px; white-space: nowrap;
+  }
+  .arch-icon { font-size: 20px; }
+  .arch-label { font-size: 10px; color: var(--text-sec); letter-spacing: .5px; }
+  .arch-arrow { color: var(--accent2); font-size: 18px; opacity: .6; }
+
+  /* ─── SECTION TITLE ─── */
+  .section-title {
+    font-family: 'Rajdhani', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ─── METRIC CARDS ─── */
+  .metrics-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px;
+    margin-bottom: 28px;
+  }
+  .metric-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    position: relative; overflow: hidden;
+    transition: var(--transition);
+    animation: fadeUp .5s ease both;
+  }
+  .metric-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--glow-blue); }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .metric-card.blue::before  { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+  .metric-card.green::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .metric-card.yellow::before{ background: linear-gradient(90deg, transparent, var(--yellow), transparent); }
+  .metric-card.red::before   { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+  .metric-card.orange::before{ background: linear-gradient(90deg, transparent, var(--orange), transparent); }
+
+  .metric-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-sec); margin-bottom: 10px; }
+  .metric-value {
+    font-family: 'Rajdhani', sans-serif; font-size: 38px; font-weight: 700; line-height: 1;
+  }
+  .metric-card.blue   .metric-value { color: var(--accent); text-shadow: var(--glow-blue); }
+  .metric-card.green  .metric-value { color: var(--green);  text-shadow: var(--glow-green); }
+  .metric-card.yellow .metric-value { color: var(--yellow); text-shadow: var(--glow-yell); }
+  .metric-card.red    .metric-value { color: var(--red);    text-shadow: var(--glow-red); }
+  .metric-card.orange .metric-value { color: var(--orange); }
+
+  .metric-sub { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+  .metric-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: .15; }
+
+  /* ─── CHARTS ROW ─── */
+  .charts-grid {
+    display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media(max-width:900px){ .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; animation: fadeUp .5s ease both;
+  }
+  .chart-card h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chart-card h3 span { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ─── TABLE ─── */
+  .table-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 28px; overflow-x: auto;
+    animation: fadeUp .5s ease both;
+  }
+  .table-header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .table-header-row h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px;
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px;
+  }
+  .search-box input {
+    background: none; border: none; outline: none;
+    color: var(--text-pri); font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    width: 200px;
+  }
+  .search-box input::placeholder { color: var(--text-dim); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-dim); font-weight: 600; white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(26,58,92,.5);
+    transition: var(--transition);
+  }
+  tbody tr:hover { background: var(--bg-hover); }
+  tbody td { padding: 12px 12px; font-size: 13px; white-space: nowrap; }
+  .mono { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--accent); }
+
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+  }
+  .badge.underutilized { background: rgba(255,214,0,.12); color: var(--yellow); border: 1px solid rgba(255,214,0,.3); }
+  .badge.healthy       { background: rgba(0,255,136,.12); color: var(--green);  border: 1px solid rgba(0,255,136,.3); }
+  .badge.overutilized  { background: rgba(255,61,110,.12); color: var(--red);   border: 1px solid rgba(255,61,110,.3); }
+  .badge.unknown       { background: rgba(100,150,200,.1); color: var(--text-sec); border: 1px solid rgba(100,150,200,.2); }
+
+  .rec-text { color: var(--text-sec); font-size: 12px; max-width: 220px; white-space: normal; line-height: 1.4; }
+  .ts-text  { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text-dim); }
+
+  .cpu-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .cpu-bar { width: 60px; height: 4px; background: var(--bg-panel); border-radius: 2px; overflow: hidden; }
+  .cpu-bar-fill { height: 100%; border-radius: 2px; transition: width .8s ease; }
+  .cpu-val { font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+
+  .btn-action {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 5px; cursor: pointer; border: none;
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: .5px; transition: var(--transition);
+  }
+  .btn-start {
+    background: rgba(0,255,136,.1); color: var(--green);
+    border: 1px solid rgba(0,255,136,.3);
+  }
+  .btn-start:hover { background: rgba(0,255,136,.2); box-shadow: 0 0 10px rgba(0,255,136,.3); }
+  .btn-stop {
+    background: rgba(255,61,110,.1); color: var(--red);
+    border: 1px solid rgba(255,61,110,.3);
+  }
+  .btn-stop:hover { background: rgba(255,61,110,.2); box-shadow: 0 0 10px rgba(255,61,110,.3); }
+  .btn-action:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ─── BOTTOM ROW ─── */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  @media(max-width:700px){ .bottom-grid { grid-template-columns: 1fr; } }
+
+  /* ─── SYSTEM STATUS ─── */
+  .status-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+    animation: fadeUp .5s ease both;
+  }
+  .status-card h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px; margin-bottom: 14px;
+  }
+  .status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid rgba(26,58,92,.4);
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-name { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .status-icon { font-size: 16px; }
+  .status-val {
+    font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 12px;
+  }
+  .status-val.active  { background: rgba(0,255,136,.1); color: var(--green);  border: 1px solid rgba(0,255,136,.25); }
+  .status-val.running { background: rgba(0,212,255,.1); color: var(--accent); border: 1px solid rgba(0,212,255,.25); }
+  .status-val.enabled { background: rgba(255,214,0,.1);  color: var(--yellow); border: 1px solid rgba(255,214,0,.25); }
+
+  /* ─── ALERT LOG ─── */
+  .log-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+    animation: fadeUp .5s ease both;
+  }
+  .log-card h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px; margin-bottom: 14px;
+  }
+  .log-scroll { max-height: 200px; overflow-y: auto; }
+  .log-entry {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid rgba(26,58,92,.3); font-size: 12px;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { font-family: 'Share Tech Mono', monospace; color: var(--text-dim); white-space: nowrap; }
+  .log-dot  { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .log-msg  { color: var(--text-sec); line-height: 1.5; }
+  .log-entry.warn  .log-dot { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .log-entry.ok    .log-dot { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+  .log-entry.error .log-dot { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+  .log-entry.info  .log-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  /* ─── TOAST ─── */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+  .toast {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; border-radius: 8px; min-width: 300px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    animation: slideIn .3s ease;
+    font-size: 13px; color: var(--text-pri);
+  }
+  .toast.success { border-color: var(--green); }
+  .toast.error   { border-color: var(--red); }
+  .toast.info    { border-color: var(--accent); }
+  @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes slideOut { to { transform: translateX(120px); opacity: 0; } }
+
+  /* ─── LOADING OVERLAY ─── */
+  #loading {
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--bg-deep);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+    transition: opacity .5s;
+  }
+  #loading.hide { opacity: 0; pointer-events: none; }
+  .loader-ring {
+    width: 70px; height: 70px; border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+    box-shadow: var(--glow-blue);
+  }
+  .loader-text { font-family: 'Rajdhani', sans-serif; font-size: 16px; letter-spacing: 3px; color: var(--text-sec); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    text-align: center; padding: 24px 0; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 12px; letter-spacing: 1px;
+  }
+  footer span { color: var(--accent); }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-row td { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ─── AUTO-REFRESH COUNTDOWN ─── */
+  .refresh-countdown {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text-dim);
+  }
+  .countdown-ring { position: relative; width: 28px; height: 28px; }
+  .countdown-ring svg { transform: rotate(-90deg); }
+  .countdown-ring circle { fill: none; stroke-width: 2.5; }
+  .countdown-bg  { stroke: var(--border); }
+  .countdown-arc { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .countdown-num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--accent);
+  }
+
+  /* ─── EXPORT BUTTON ─── */
+  .btn-export {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 7px; cursor: pointer;
+    background: rgba(0,255,136,.08); color: var(--green);
+    border: 1px solid rgba(0,255,136,.25);
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    transition: var(--transition);
+  }
+  .btn-export:hover { background: rgba(0,255,136,.15); box-shadow: 0 0 12px rgba(0,255,136,.3); transform: translateY(-1px); }
+
+  /* ─── COST SAVINGS CARD ─── */
+  .metric-card.teal::before { background: linear-gradient(90deg, transparent, #00e5cc, transparent); }
+  .metric-card.teal .metric-value { color: #00e5cc; text-shadow: 0 0 18px #00e5cc55, 0 0 40px #00e5cc22; }
+  .metric-card.teal:hover { border-color: #00e5cc; }
+
+  /* ─── INSTANCE NAME TAG ─── */
+  .inst-name   { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+  .inst-id-wrap { display: flex; flex-direction: column; }
+
+  /* ─── DETAIL MODAL ─── */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(5,12,20,.88); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  .modal-backdrop.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; width: 740px; max-width: 95vw; max-height: 88vh;
+    overflow-y: auto; padding: 28px;
+    box-shadow: 0 0 60px rgba(0,212,255,.12);
+    transform: translateY(30px); transition: transform .3s;
+  }
+  .modal-backdrop.open .modal { transform: none; }
+  .modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 24px; gap: 16px;
+  }
+  .modal-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); }
+  .modal-sub   { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .modal-close {
+    background: none; border: 1px solid var(--border); color: var(--text-sec);
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: var(--transition);
+  }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+  .modal-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;
+  }
+  .modal-stat {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; text-align: center;
+  }
+  .modal-stat-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+  .modal-stat-val   { font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700; }
+  .modal-chart-wrap { position: relative; height: 200px; margin-bottom: 20px; }
+  .modal-section-title {
+    font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .modal-history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .modal-history-table th {
+    text-align: left; padding: 8px 10px; color: var(--text-dim);
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-history-table td { padding: 8px 10px; border-bottom: 1px solid rgba(26,58,92,.3); color: var(--text-sec); }
+  .modal-history-table tr:last-child td { border-bottom: none; }
+
+  /* ─── VIEW BUTTON ─── */
+  .view-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    background: rgba(0,212,255,.08); color: var(--accent);
+    border: 1px solid rgba(0,212,255,.2);
+    font-family: 'Rajdhani', sans-serif; font-size: 11px; font-weight: 600;
+    transition: var(--transition);
+  }
+  .view-btn:hover { background: rgba(0,212,255,.18); }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div class="loader-text">INITIALIZING CLOUDPULSE...</div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Detail Modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" id="instanceModal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">Instance Details</div>
+        <div class="modal-sub" id="modalSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-stats" id="modalStats"></div>
+    <div class="modal-section-title">CPU History (All Records)</div>
+    <div class="modal-chart-wrap"><canvas id="modalChart"></canvas></div>
+    <div class="modal-section-title">Full History Log</div>
+    <table class="modal-history-table">
+      <thead><tr>
+        <th>Timestamp</th><th>Avg CPU (7d)</th><th>Predicted CPU</th>
+        <th>Classification</th><th>Recommendation</th>
+      </tr></thead>
+      <tbody id="modalHistoryBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">☁️</div>
+      <div class="logo-text">
+        <h1>CloudPulse</h1>
+        <p>Serverless infrastructure intelligence and optimization platform</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <div class="pulse-dot"></div>
+        LIVE MONITORING
+      </div>
+      <!-- Auto-refresh countdown -->
+      <div class="refresh-countdown">
+        <div class="countdown-ring">
+          <svg width="28" height="28" viewBox="0 0 28 28">
+            <circle class="countdown-bg" cx="14" cy="14" r="11"/>
+            <circle class="countdown-arc" id="countdownArc" cx="14" cy="14" r="11"
+              stroke-dasharray="69.1" stroke-dashoffset="0"/>
+          </svg>
+          <div class="countdown-num" id="countdownNum">5m</div>
+        </div>
+        AUTO-REFRESH
+      </div>
+      <div class="timestamp" id="clock">--</div>
+      <button class="btn-export" onclick="exportCSV()">
+        ⬇ CSV
+      </button>
+      <button class="btn-refresh" id="refreshBtn" onclick="refreshAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        REFRESH
+      </button>
+    </div>
+  </header>
+
+  <!-- ARCHITECTURE STRIP -->
+  <div class="arch-strip">
+    <div class="arch-node"><div class="arch-icon">🖥️</div><div class="arch-label">EC2</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">📊</div><div class="arch-label">CloudWatch</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">⚡</div><div class="arch-label">Lambda</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">🗄️</div><div class="arch-label">DynamoDB</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">🔔</div><div class="arch-label">EventBridge</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">📣</div><div class="arch-label">SNS</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">🔌</div><div class="arch-label">API Gateway</div></div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node"><div class="arch-icon">📦</div><div class="arch-label">S3</div></div>
+  </div>
+
+  <!-- METRIC CARDS -->
+  <div class="section-title">Infrastructure Overview</div>
+  <div class="metrics-grid" id="metricsGrid">
+    <div class="metric-card blue">
+      <div class="metric-icon">🖥️</div>
+      <div class="metric-label">Total Instances</div>
+      <div class="metric-value" id="m-total">—</div>
+      <div class="metric-sub">Monitored EC2 nodes</div>
+    </div>
+    <div class="metric-card yellow">
+      <div class="metric-icon">⚠️</div>
+      <div class="metric-label">Underutilized</div>
+      <div class="metric-value" id="m-under">—</div>
+      <div class="metric-sub">Below threshold</div>
+    </div>
+    <div class="metric-card green">
+      <div class="metric-icon">✅</div>
+      <div class="metric-label">Healthy</div>
+      <div class="metric-value" id="m-healthy">—</div>
+      <div class="metric-sub">Optimal range</div>
+    </div>
+    <div class="metric-card red">
+      <div class="metric-icon">🔥</div>
+      <div class="metric-label">Overutilized</div>
+      <div class="metric-value" id="m-over">—</div>
+      <div class="metric-sub">Needs attention</div>
+    </div>
+    <div class="metric-card orange">
+      <div class="metric-icon">📈</div>
+      <div class="metric-label">Avg CPU (7d)</div>
+      <div class="metric-value" id="m-cpu">—</div>
+      <div class="metric-sub">Across all instances</div>
+    </div>
+    <div class="metric-card teal">
+      <div class="metric-icon">💰</div>
+      <div class="metric-label">Est. Monthly Savings</div>
+      <div class="metric-value" id="m-savings">—</div>
+      <div class="metric-sub">If underutilized stopped</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-title">CPU Analytics</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3><span style="background:var(--accent)"></span> CPU Utilization Trend (7-Day Avg)</h3>
+      <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3><span style="background:var(--accent2)"></span> Avg vs Predicted CPU</h3>
+      <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3><span style="background:var(--green)"></span> Health Distribution</h3>
+      <div class="chart-wrap"><canvas id="chartPie"></canvas></div>
+    </div>
+  </div>
+
+  <!-- INSTANCE TABLE -->
+  <div class="section-title">Instance Insights</div>
+  <div class="table-card">
+    <div class="table-header-row">
+      <h3>EC2 Instance Details</h3>
+      <div class="search-box">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6a9cc0" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Filter instances..." oninput="filterTable()"/>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Instance ID / Name</th>
+          <th>Avg CPU (7d)</th>
+          <th>Predicted CPU</th>
+          <th>Classification</th>
+          <th>Recommendation</th>
+          <th>Timestamp</th>
+          <th>Details</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="empty-row"><td colspan="8">Loading insights...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="section-title">System Status</div>
+  <div class="bottom-grid">
+    <div class="status-card">
+      <h3>⚙️ System Health Monitor</h3>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">🤖</div> Monitoring Engine</div>
+        <div class="status-val active">Active</div>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">🕒</div> Automation Scheduler</div>
+        <div class="status-val running">Running</div>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">🔔</div> Alerting System</div>
+        <div class="status-val enabled">Enabled</div>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">⚡</div> Lambda Engine</div>
+        <div class="status-val active">Active</div>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">🗄️</div> DynamoDB Storage</div>
+        <div class="status-val active">Active</div>
+      </div>
+      <div class="status-row">
+        <div class="status-name"><div class="status-icon">🔌</div> API Gateway</div>
+        <div class="status-val running">Running</div>
+      </div>
+    </div>
+
+    <div class="log-card">
+      <h3>📋 Activity Log</h3>
+      <div class="log-scroll" id="activityLog">
+        <div class="log-entry info">
+          <div class="log-time">--:--:--</div>
+          <div class="log-dot"></div>
+          <div class="log-msg">Awaiting data...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>CloudPulse</span> &nbsp;·&nbsp; Serverless Cloud Intelligence Platform &nbsp;·&nbsp; Built with <span>AWS</span>
+  </footer>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────
+let allData      = [];
+let latestData   = [];
+let chartLine, chartBar, chartPie, modalChart;
+const API_INSIGHTS = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/insights';
+const API_CONTROL  = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/control';
+
+// Cost estimate: average t3.micro on-demand ~$0.0104/hr in ap-south-1
+const COST_PER_HOUR = 0.0104;
+
+// ─── MULTI-INSTANCE HELPERS ───────────────────────────────────────────
+function getLatestPerInstance(data) {
+  const map = {};
+  data.forEach(record => {
+    const id = record.Instance_ID;
+    if (!id) return;
+    if (!map[id] || (record.Timestamp || '') > (map[id].Timestamp || '')) map[id] = record;
+  });
+  return Object.values(map);
+}
+function getUniqueInstanceIds(data) {
+  return [...new Set(data.map(d => d.Instance_ID).filter(Boolean))].sort();
+}
+
+// ─── CLOCK ───────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleString('en-US', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' }) + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── AUTO-REFRESH COUNTDOWN (5 minutes) ──────────────────────────────
+const REFRESH_SECS = 300;
+let countdownVal   = REFRESH_SECS;
+const circumference = 2 * Math.PI * 11; // r=11
+
+function updateCountdownUI() {
+  const arc = document.getElementById('countdownArc');
+  const num = document.getElementById('countdownNum');
+  if (!arc || !num) return;
+  const frac   = countdownVal / REFRESH_SECS;
+  arc.style.strokeDashoffset = circumference * (1 - frac);
+  const m = Math.floor(countdownVal / 60);
+  const s = countdownVal % 60;
+  num.textContent = m > 0 ? `${m}m` : `${s}s`;
+}
+
+setInterval(() => {
+  countdownVal--;
+  if (countdownVal <= 0) {
+    countdownVal = REFRESH_SECS;
+    refreshAll();
+  }
+  updateCountdownUI();
+}, 1000);
+updateCountdownUI();
+
+// ─── TOAST ───────────────────────────────────────────────────────────
+function showToast(msg, type = 'info', icon = 'ℹ️') {
+  const ct = document.getElementById('toast-container');
+  const t  = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  ct.appendChild(t);
+  setTimeout(() => { t.style.animation = 'slideOut .3s ease forwards'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+// ─── ACTIVITY LOG ─────────────────────────────────────────────────────
+function addLog(msg, type = 'info') {
+  const log = document.getElementById('activityLog');
+  const ts  = new Date().toTimeString().slice(0,8);
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<div class="log-time">${ts}</div><div class="log-dot"></div><div class="log-msg">${msg}</div>`;
+  log.prepend(entry);
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// ─── CLASSIFICATION HELPERS ───────────────────────────────────────────
+function classKey(c = '') {
+  const lc = c.toLowerCase();
+  if (lc.includes('under')) return 'underutilized';
+  if (lc.includes('over'))  return 'overutilized';
+  if (lc.includes('health') || lc.includes('normal') || lc.includes('optimal')) return 'healthy';
+  return 'unknown';
+}
+function cpuColor(pct) {
+  if (pct < 20)  return '#ffd600';
+  if (pct > 70)  return '#ff3d6e';
+  return '#00ff88';
+}
+
+// ─── INSTANCE NAME TAG ────────────────────────────────────────────────
+// Name tags are stored by Lambda in the Instance_Name field (if present),
+// otherwise we display a friendly short alias from the Instance_ID.
+function getInstanceName(row) {
+  if (row.Instance_Name && row.Instance_Name !== 'N/A' && row.Instance_Name.trim() !== '') {
+    return row.Instance_Name;
+  }
+  // Friendly fallback: "ec2-" + last 6 chars of ID
+  return row.Instance_ID ? 'ec2-' + row.Instance_ID.slice(-6) : '—';
+}
+
+// ─── COST SAVINGS ESTIMATOR ──────────────────────────────────────────
+// Assumes underutilized instances run 24/7 and could be stopped.
+// Savings = underutilized_count × COST_PER_HOUR × 24 × 30
+function calcMonthlySavings(data) {
+  const underCount = data.filter(d => classKey(d.Classification) === 'underutilized').length;
+  const savings    = underCount * COST_PER_HOUR * 24 * 30;
+  return savings.toFixed(2);
+}
+
+// ─── METRICS ─────────────────────────────────────────────────────────
+function updateMetrics() {
+  const total   = getUniqueInstanceIds(allData).length;
+  const under   = latestData.filter(d => classKey(d.Classification) === 'underutilized').length;
+  const over    = latestData.filter(d => classKey(d.Classification) === 'overutilized').length;
+  const healthy = latestData.filter(d => classKey(d.Classification) === 'healthy').length;
+
+  const cpuValues = latestData.map(d => parseFloat(d.Average_CPU_Last_7_Days)).filter(v => !isNaN(v));
+  const avgCPU = cpuValues.length
+    ? (cpuValues.reduce((a,v) => a + v, 0) / cpuValues.length).toFixed(2) : '0.00';
+
+  const savings = calcMonthlySavings(latestData);
+
+  document.getElementById('m-total').textContent   = total;
+  document.getElementById('m-under').textContent   = under;
+  document.getElementById('m-healthy').textContent = healthy;
+  document.getElementById('m-over').textContent    = over;
+  document.getElementById('m-cpu').textContent     = avgCPU + '%';
+  document.getElementById('m-savings').textContent = '$' + savings;
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────────────
+Chart.defaults.color       = '#6a9cc0';
+Chart.defaults.font.family = "'Exo 2', sans-serif";
+Chart.defaults.font.size   = 11;
+
+function buildCharts() {
+  const gridColor = 'rgba(26,58,92,.5)';
+
+  // LINE — all historical sorted by timestamp
+  const sorted    = [...allData].sort((a,b) => (a.Timestamp||'').localeCompare(b.Timestamp||''));
+  const lineLabels = sorted.map(d => {
+    const id = d.Instance_ID ? d.Instance_ID.slice(-6) : '??';
+    const ts = (d.Timestamp||'').slice(0,10);
+    return `${id} ${ts}`;
+  });
+  const lineVals = sorted.map(d => +(parseFloat(d.Average_CPU_Last_7_Days||0)).toFixed(4));
+
+  if (chartLine) chartLine.destroy();
+  chartLine = new Chart(document.getElementById('chartLine'), {
+    type: 'line',
+    data: { labels: lineLabels, datasets: [{ label: 'Avg CPU %', data: lineVals,
+      borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)',
+      tension:.4, fill:true, pointBackgroundColor:'#00d4ff', pointRadius:4, pointHoverRadius:6 }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{grid:{color:gridColor}, ticks:{maxRotation:45, maxTicksLimit:10}},
+               y:{grid:{color:gridColor}, min:0, ticks:{callback:v=>v+'%'}} } }
+  });
+
+  // BAR — latest per instance
+  const barLabels   = latestData.map(d => getInstanceName(d));
+  const barAvgCPUs  = latestData.map(d => +(parseFloat(d.Average_CPU_Last_7_Days||0)).toFixed(4));
+  const barPredCPUs = latestData.map(d => +(parseFloat(d.Predicted_CPU||0)).toFixed(4));
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chartBar'), {
+    type: 'bar',
+    data: { labels: barLabels, datasets: [
+      { label:'Avg CPU',   data:barAvgCPUs,  backgroundColor:'rgba(0,102,255,.7)',  borderRadius:4 },
+      { label:'Predicted', data:barPredCPUs, backgroundColor:'rgba(0,212,255,.5)', borderRadius:4 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{boxWidth:12}} },
+      scales:{ x:{grid:{color:gridColor}, ticks:{maxRotation:45}},
+               y:{grid:{color:gridColor}, min:0, ticks:{callback:v=>v+'%'}} } }
+  });
+
+  // PIE
+  const counts = {
+    Underutilized: latestData.filter(d=>classKey(d.Classification)==='underutilized').length,
+    Healthy:       latestData.filter(d=>classKey(d.Classification)==='healthy').length,
+    Overutilized:  latestData.filter(d=>classKey(d.Classification)==='overutilized').length,
+    Unknown:       latestData.filter(d=>classKey(d.Classification)==='unknown').length,
+  };
+  const pieLabels = Object.keys(counts).filter(k=>counts[k]>0);
+  const pieColors = { Underutilized:'rgba(255,214,0,.8)', Healthy:'rgba(0,255,136,.8)',
+                      Overutilized:'rgba(255,61,110,.8)', Unknown:'rgba(100,150,200,.5)' };
+
+  if (chartPie) chartPie.destroy();
+  chartPie = new Chart(document.getElementById('chartPie'), {
+    type: 'doughnut',
+    data: { labels:pieLabels, datasets:[{
+      data: pieLabels.map(k=>counts[k]),
+      backgroundColor: pieLabels.map(k=>pieColors[k]),
+      borderColor:'#081626', borderWidth:2, hoverOffset:8
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{position:'bottom', labels:{padding:12, boxWidth:12}} } }
+  });
+}
+
+// ─── TABLE ───────────────────────────────────────────────────────────
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No instances found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(row => {
+    const ck       = classKey(row.Classification);
+    const rawAvg   = parseFloat(row.Average_CPU_Last_7_Days);
+    const rawPred  = parseFloat(row.Predicted_CPU);
+    const avgPct   = isNaN(rawAvg)  ? '0.00' : rawAvg.toFixed(2);
+    const prePct   = isNaN(rawPred) ? '0.00' : rawPred.toFixed(2);
+    const fillColor = cpuColor(parseFloat(avgPct));
+    const name      = getInstanceName(row);
+    const instId    = row.Instance_ID || '—';
+    return `
+      <tr>
+        <td>
+          <div class="inst-id-wrap">
+            <span class="mono">${instId}</span>
+            <span class="inst-name">🏷 ${name}</span>
+          </div>
+        </td>
+        <td>
+          <div class="cpu-bar-wrap">
+            <div class="cpu-bar"><div class="cpu-bar-fill" style="width:${Math.min(avgPct,100)}%;background:${fillColor}"></div></div>
+            <span class="cpu-val" style="color:${fillColor}">${avgPct}%</span>
+          </div>
+        </td>
+        <td>
+          <div class="cpu-bar-wrap">
+            <div class="cpu-bar"><div class="cpu-bar-fill" style="width:${Math.min(prePct,100)}%;background:#0066ff"></div></div>
+            <span class="cpu-val" style="color:#4499ff">${prePct}%</span>
+          </div>
+        </td>
+        <td><span class="badge ${ck}">${row.Classification||'Unknown'}</span></td>
+        <td><div class="rec-text">${row.Recommendation||'—'}</div></td>
+        <td><span class="ts-text">${(row.Timestamp||'—').replace('T',' ').slice(0,19)}</span></td>
+        <td>
+          <button class="view-btn" onclick="openModal('${instId}')">🔍 Detail</button>
+        </td>
+        <td style="display:flex;gap:6px;align-items:center;">
+          <button class="btn-action btn-start" onclick="controlInstance('${instId}','start',this)">▶ Start</button>
+          <button class="btn-action btn-stop"  onclick="controlInstance('${instId}','stop',this)">⏹ Stop</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = q ? latestData.filter(d =>
+    (d.Instance_ID||'').toLowerCase().includes(q) ||
+    (d.Classification||'').toLowerCase().includes(q) ||
+    (d.Recommendation||'').toLowerCase().includes(q) ||
+    getInstanceName(d).toLowerCase().includes(q)
+  ) : latestData;
+  renderTable(filtered);
+}
+
+// ─── EXPORT CSV ───────────────────────────────────────────────────────
+function exportCSV() {
+  if (!latestData.length) { showToast('No data to export', 'error', '❌'); return; }
+  const headers = ['Instance_ID','Instance_Name','Average_CPU_Last_7_Days','Predicted_CPU','Classification','Recommendation','Timestamp'];
+  const rows = latestData.map(d => [
+    d.Instance_ID||'',
+    getInstanceName(d),
+    d.Average_CPU_Last_7_Days||'',
+    d.Predicted_CPU||'',
+    d.Classification||'',
+    `"${(d.Recommendation||'').replace(/"/g,'""')}"`,
+    d.Timestamp||''
+  ].join(','));
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `cloudpulse-insights-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported successfully', 'success', '⬇');
+  addLog(`Exported ${latestData.length} instances to CSV`, 'ok');
+}
+
+// ─── INSTANCE DETAIL MODAL ────────────────────────────────────────────
+function openModal(instanceId) {
+  const instanceHistory = allData
+    .filter(d => d.Instance_ID === instanceId)
+    .sort((a,b) => (a.Timestamp||'').localeCompare(b.Timestamp||''));
+
+  if (!instanceHistory.length) return;
+
+  const latest = instanceHistory[instanceHistory.length - 1];
+  const name   = getInstanceName(latest);
+  const ck     = classKey(latest.Classification);
+  const avgCPU = parseFloat(latest.Average_CPU_Last_7_Days||0);
+  const predCPU= parseFloat(latest.Predicted_CPU||0);
+  const savings= (classKey(latest.Classification)==='underutilized')
+    ? '$' + (COST_PER_HOUR * 24 * 30).toFixed(2) + '/mo' : '—';
+
+  // Header
+  document.getElementById('modalTitle').textContent = `🖥 ${name}`;
+  document.getElementById('modalSub').textContent   = instanceId;
+
+  // Stats
+  const ckColor = ck==='underutilized'?'var(--yellow)': ck==='overutilized'?'var(--red)':'var(--green)';
+  document.getElementById('modalStats').innerHTML = `
+    <div class="modal-stat">
+      <div class="modal-stat-label">Avg CPU (7d)</div>
+      <div class="modal-stat-val" style="color:${cpuColor(avgCPU)}">${avgCPU.toFixed(2)}%</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">Predicted CPU</div>
+      <div class="modal-stat-val" style="color:#4499ff">${predCPU.toFixed(2)}%</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">Status</div>
+      <div class="modal-stat-val" style="color:${ckColor}">${latest.Classification||'—'}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">Total Records</div>
+      <div class="modal-stat-val" style="color:var(--accent)">${instanceHistory.length}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">Est. Savings</div>
+      <div class="modal-stat-val" style="color:#00e5cc">${savings}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">Last Seen</div>
+      <div class="modal-stat-val" style="color:var(--text-sec);font-size:14px">${(latest.Timestamp||'—').slice(0,10)}</div>
+    </div>`;
+
+  // Modal chart
+  if (modalChart) modalChart.destroy();
+  const mLabels = instanceHistory.map(d => (d.Timestamp||'').replace('T',' ').slice(0,16));
+  const mAvg    = instanceHistory.map(d => +(parseFloat(d.Average_CPU_Last_7_Days||0)).toFixed(4));
+  const mPred   = instanceHistory.map(d => +(parseFloat(d.Predicted_CPU||0)).toFixed(4));
+  modalChart = new Chart(document.getElementById('modalChart'), {
+    type: 'line',
+    data: { labels: mLabels, datasets: [
+      { label:'Avg CPU',   data:mAvg,  borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)',
+        tension:.4, fill:true, pointRadius:4, pointBackgroundColor:'#00d4ff' },
+      { label:'Predicted', data:mPred, borderColor:'#0066ff', backgroundColor:'rgba(0,102,255,.05)',
+        tension:.4, fill:false, pointRadius:3, borderDash:[4,3] }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{boxWidth:10, padding:14}} },
+      scales:{ x:{grid:{color:'rgba(26,58,92,.5)'}, ticks:{maxRotation:45, maxTicksLimit:8}},
+               y:{grid:{color:'rgba(26,58,92,.5)'}, min:0, ticks:{callback:v=>v+'%'}} } }
+  });
+
+  // History table
+  document.getElementById('modalHistoryBody').innerHTML = [...instanceHistory].reverse().map(d => {
+    const ck2 = classKey(d.Classification);
+    return `<tr>
+      <td>${(d.Timestamp||'—').replace('T',' ').slice(0,19)}</td>
+      <td style="color:${cpuColor(parseFloat(d.Average_CPU_Last_7_Days||0))}">${parseFloat(d.Average_CPU_Last_7_Days||0).toFixed(2)}%</td>
+      <td style="color:#4499ff">${parseFloat(d.Predicted_CPU||0).toFixed(2)}%</td>
+      <td><span class="badge ${ck2}" style="font-size:10px">${d.Classification||'—'}</span></td>
+      <td>${d.Recommendation||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalBackdrop')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  if (modalChart) { modalChart.destroy(); modalChart = null; }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+// ─── CONTROL ─────────────────────────────────────────────────────────
+async function controlInstance(instanceId, action, btn) {
+  if (!instanceId) return;
+  if (action === 'stop') {
+    const confirmed = window.confirm(
+      `⚠ Stop EC2 Instance?\n\nInstance: ${instanceId}\n\nAre you sure you want to stop this EC2 instance?`
+    );
+    if (!confirmed) return;
+  }
+  const row  = btn.closest('tr');
+  const btns = row ? row.querySelectorAll('.btn-action') : [];
+  btns.forEach(b => b.disabled = true);
+  btn.textContent = action === 'start' ? '⟳ Starting…' : '⟳ Stopping…';
+
+  const url = `${API_CONTROL}?instance_id=${encodeURIComponent(instanceId)}&action=${action}`;
+  try {
+    const res = await fetch(url);
+    const txt = await res.text();
+    let msg = txt;
+    try { const j = JSON.parse(txt); msg = j.message || j.status || txt; } catch(e) {}
+    if (res.ok) {
+      showToast(`${action.toUpperCase()} sent → ${instanceId.slice(-8)}`, 'success', action==='start'?'▶':'⏹');
+      addLog(`${action.toUpperCase()} → ${instanceId} | ${msg}`, 'ok');
+    } else {
+      showToast(`Failed to ${action}: ${msg}`, 'error', '❌');
+      addLog(`FAILED ${action.toUpperCase()} → ${instanceId}`, 'error');
+    }
+  } catch(err) {
+    showToast(`Network error: ${err.message}`, 'error', '🔌');
+    addLog(`NETWORK ERROR → ${instanceId}`, 'error');
+  } finally {
+    btns.forEach(b => b.disabled = false);
+    btn.textContent = action === 'start' ? '▶ Start' : '⏹ Stop';
+  }
+}
+
+// ─── FETCH ───────────────────────────────────────────────────────────
+async function fetchInsights() {
+  addLog('Fetching insights from API…', 'info');
+  const res  = await fetch(API_INSIGHTS);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+  countdownVal = REFRESH_SECS;
+  updateCountdownUI();
+
+  try {
+    const rawData  = await fetchInsights();
+    allData        = rawData;
+    latestData     = getLatestPerInstance(rawData);
+    const unique   = latestData.length;
+    updateMetrics();
+    buildCharts();
+    renderTable(latestData);
+    addLog(`Loaded ${rawData.length} record(s) across ${unique} unique instance(s).`, 'ok');
+    showToast(`Dashboard refreshed — ${unique} instance(s)`, 'success', '✅');
+  } catch(err) {
+    showToast('Failed to fetch insights: ' + err.message, 'error', '❌');
+    addLog('API error: ' + err.message, 'error');
+    document.getElementById('tableBody').innerHTML =
+      `<tr class="empty-row"><td colspan="8">⚠ Could not load data: ${err.message}</td></tr>`;
+  } finally {
+    btn.classList.remove('spinning');
+    btn.disabled = false;
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await refreshAll();
+  setTimeout(() => { document.getElementById('loading').classList.add('hide'); }, 600);
+});
+</script>
+</body>
+</html>
