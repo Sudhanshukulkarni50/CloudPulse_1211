@@ -1,51 +1,53 @@
-#Code for Main Lambda Function
-
 import boto3
 from datetime import datetime, timedelta
+from decimal import Decimal
 
+# AWS Clients
 ec2 = boto3.client('ec2')
 cloudwatch = boto3.client('cloudwatch')
 sns = boto3.client('sns')
 dynamodb = boto3.resource('dynamodb')
 
+# Resources
 SNS_TOPIC_ARN = "arn:aws:sns:ap-south-1:504115868738:CloudPulse_Alerts"
-table = dynamodb.Table('CloudPulse_Insights')
+table        = dynamodb.Table('CloudPulse_Insights')
+alerts_table = dynamodb.Table('CloudPulse_Alerts')   # ✅ NEW
 
 
 def get_running_instances():
-    
-    response = ec2.describe_instances(
-        Filters=[
-            {
-                'Name': 'instance-state-name',
-                'Values': ['running']
-            }
-        ]
-    )
+    paginator = ec2.get_paginator('describe_instances')
+    instances = []
 
-    instance_ids = []
+    for page in paginator.paginate(
+        Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+    ):
+        for reservation in page['Reservations']:
+            for instance in reservation['Instances']:
+                name = 'N/A'
+                for tag in instance.get('Tags', []):
+                    if tag['Key'] == 'Name':
+                        name = tag['Value']
+                        break
 
-    for reservation in response['Reservations']:
-        for instance in reservation['Instances']:
-            instance_ids.append(instance['InstanceId'])
+                instances.append({
+                    'InstanceId':        instance['InstanceId'],
+                    'InstanceType':      instance.get('InstanceType', 'N/A'),
+                    'AvailabilityZone':  instance['Placement']['AvailabilityZone'],
+                    'Region':            ec2.meta.region_name,
+                    'InstanceName':      name
+                })
 
-    return instance_ids
+    return instances
 
 
 def get_cpu_metrics(instance_id):
-
-    end_time = datetime.utcnow()
-    start_time = end_time - timedelta(days=7)
+    end_time   = datetime.utcnow()
+    start_time = end_time - timedelta(hours=1)  # change to days=7 after testing
 
     response = cloudwatch.get_metric_statistics(
         Namespace='AWS/EC2',
         MetricName='CPUUtilization',
-        Dimensions=[
-            {
-                'Name': 'InstanceId',
-                'Value': instance_id
-            }
-        ],
+        Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}],
         StartTime=start_time,
         EndTime=end_time,
         Period=3600,
@@ -53,120 +55,143 @@ def get_cpu_metrics(instance_id):
     )
 
     datapoints = response['Datapoints']
-
     if not datapoints:
         return 0
 
-    avg_cpu = sum([point['Average'] for point in datapoints]) / len(datapoints)
-
+    avg_cpu = sum([p['Average'] for p in datapoints]) / len(datapoints)
     return round(avg_cpu, 2)
 
 
 def get_recent_cpu_metrics(instance_id):
-
-    end_time = datetime.utcnow()
+    end_time   = datetime.utcnow()
     start_time = end_time - timedelta(hours=24)
 
     response = cloudwatch.get_metric_statistics(
         Namespace='AWS/EC2',
         MetricName='CPUUtilization',
-        Dimensions=[
-            {
-                'Name': 'InstanceId',
-                'Value': instance_id
-            }
-        ],
+        Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}],
         StartTime=start_time,
         EndTime=end_time,
         Period=3600,
         Statistics=['Average']
     )
-
     return response['Datapoints']
 
 
-def predict_future_cpu(datapoints):
-
+def predict_future_cpu(datapoints, fallback=0):
     if not datapoints:
-        return 0
+        return fallback
 
-    datapoints = sorted(datapoints, key=lambda x: x['Timestamp'])
-
+    datapoints  = sorted(datapoints, key=lambda x: x['Timestamp'])
     last_values = datapoints[-5:]
-
-    predicted_cpu = sum([p['Average'] for p in last_values]) / len(last_values)
-
-    return round(predicted_cpu, 2)
+    predicted   = sum([p['Average'] for p in last_values]) / len(last_values)
+    return round(predicted, 2)
 
 
 def classify_instance(cpu):
-
     if cpu < 20:
         return "Underutilized", "Consider stopping instance to save cost"
-
     elif cpu <= 70:
         return "Healthy", "No action required"
-
     else:
         return "Overutilized", "Consider upgrading instance type"
 
 
+# ✅ NEW — saves alert record to CloudPulse_Alerts table
+def save_alert(instance_id, instance_name, instance_type, region, az, cpu_avg, predicted_cpu, recommendation):
+    alerts_table.put_item(Item={
+        "Instance_ID":       instance_id,
+        "Timestamp":         str(datetime.utcnow()),
+        "Instance_Name":     instance_name,
+        "Instance_Type":     instance_type,
+        "Region":            region,
+        "Availability_Zone": az,
+        "CPU_At_Alert":      Decimal(str(cpu_avg)),
+        "Predicted_CPU":     Decimal(str(predicted_cpu)),
+        "Alert_Type":        "Overutilized",
+        "Recommendation":    recommendation,
+        "SNS_Sent":          "true"
+    })
+
+
 def lambda_handler(event, context):
+    instances = get_running_instances()
+    results   = []
 
-    instance_ids = get_running_instances()
+    for instance in instances:
+        instance_id   = instance['InstanceId']
+        instance_type = instance['InstanceType']
+        az            = instance['AvailabilityZone']
+        region        = instance['Region']
+        instance_name = instance['InstanceName']
 
-    results = []
+        try:
+            cpu_avg = get_cpu_metrics(instance_id)
+            classification, recommendation = classify_instance(cpu_avg)
 
-    for instance_id in instance_ids:
+            recent_data   = get_recent_cpu_metrics(instance_id)
+            predicted_cpu = predict_future_cpu(recent_data, fallback=cpu_avg)
 
-        cpu_avg = get_cpu_metrics(instance_id)
-        print(f"DEBUG → {instance_id} CPU: {cpu_avg}")
-        classification, recommendation = classify_instance(cpu_avg)
+            # Save insight to main table
+            table.put_item(Item={
+                "Instance_ID":             instance_id,
+                "Instance_Name":           instance_name,
+                "Instance_Type":           instance_type,
+                "Availability_Zone":       az,
+                "Region":                  region,
+                "Timestamp":               str(datetime.utcnow()),
+                "Average_CPU_Last_7_Days": Decimal(str(cpu_avg)),
+                "Predicted_CPU":           Decimal(str(predicted_cpu)),
+                "Classification":          classification,
+                "Recommendation":          recommendation
+            })
 
-        recent_data = get_recent_cpu_metrics(instance_id)
+            if classification == "Overutilized":
 
-        predicted_cpu = predict_future_cpu(recent_data)
-
-        table.put_item(
-            Item={
-                "Instance_ID": instance_id,
-                "Timestamp": str(datetime.utcnow()),
-                "Average_CPU_Last_7_Days": str(cpu_avg),
-                "Predicted_CPU": str(predicted_cpu),
-                "Classification": classification,
-                "Recommendation": recommendation
-            }
-        )
-
-        if classification == "Overutilized":
-
-            sns.publish(
-                TopicArn=SNS_TOPIC_ARN,
-                Subject="CloudPulse Alert: EC2 Instance Overutilized",
-                Message=f"""
+                # ✅ Send SNS alert
+                sns.publish(
+                    TopicArn=SNS_TOPIC_ARN,
+                    Subject="CloudPulse Alert: EC2 Instance Overutilized",
+                    Message=f"""
 CloudPulse Monitoring Alert
 
-Instance ID: {instance_id}
+Instance ID:    {instance_id}
+Instance Name:  {instance_name}
+Instance Type:  {instance_type}
+Region:         {region}
+AZ:             {az}
 
-Average CPU (Last 7 Days): {cpu_avg}%
-Predicted CPU (Next Hours): {predicted_cpu}%
+Average CPU:    {cpu_avg}%
+Predicted CPU:  {predicted_cpu}%
 
 Status: Overutilized
-
-Recommendation:
-{recommendation}
+Recommendation: {recommendation}
 
 Timestamp: {datetime.utcnow()}
 """
-            )
+                )
 
-        results.append({
-            "Instance_ID": instance_id,
-            "Average_CPU_Last_7_Days": cpu_avg,
-            "Predicted_CPU_Next_Hours": predicted_cpu,
-            "Classification": classification,
-            "Recommendation": recommendation
-        })
+                # ✅ NEW — save alert to CloudPulse_Alerts table
+                save_alert(
+                    instance_id, instance_name, instance_type,
+                    region, az, cpu_avg, predicted_cpu, recommendation
+                )
+
+            results.append({
+                "Instance_ID":    instance_id,
+                "Instance_Name":  instance_name,
+                "Instance_Type":  instance_type,
+                "Region":         region,
+                "AZ":             az,
+                "Average_CPU":    cpu_avg,
+                "Predicted_CPU":  predicted_cpu,
+                "Classification": classification,
+                "Recommendation": recommendation
+            })
+
+        except Exception as e:
+            print(f"ERROR processing {instance_id}: {e}")
+            continue
 
     return {
         "Total_Instances_Processed": len(results),
