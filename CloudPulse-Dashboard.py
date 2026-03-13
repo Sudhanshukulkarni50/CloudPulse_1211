@@ -2,11 +2,10 @@ import boto3
 import json
 from decimal import Decimal
 
-dynamodb     = boto3.resource('dynamodb')
-table        = dynamodb.Table('CloudPulse_Insights')
-alerts_table = dynamodb.Table('CloudPulse_Alerts')
-
-# ✅ Decimal encoder — handles Decimal from DynamoDB
+dynamodb      = boto3.resource('dynamodb')
+table         = dynamodb.Table('CloudPulse_Insights')
+alerts_table  = dynamodb.Table('CloudPulse_Alerts')
+hourly_table  = dynamodb.Table('CloudPulse_Hourly')   
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
@@ -14,24 +13,36 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 def lambda_handler(event, context):
+    print("EVENT:", json.dumps(event))
 
-    # ✅ Handle both HTTP API and REST API path formats
-    path = event.get('rawPath') or event.get('path') or '/insights'
+    path = (
+        event.get('rawPath') or
+        event.get('path') or
+        event.get('resource') or
+        ''
+    )
 
-    if '/alerts' in path:
-        # Fetch from CloudPulse_Alerts table
+    print("PATH DETECTED:", path)
+
+    if 'alerts' in path:
         items    = []
         response = alerts_table.scan()
         items.extend(response['Items'])
         while 'LastEvaluatedKey' in response:
             response = alerts_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             items.extend(response['Items'])
-
-        # Sort newest first
         items.sort(key=lambda x: x.get('Timestamp', ''), reverse=True)
 
+    elif 'heatmap' in path:
+        items    = []
+        response = hourly_table.scan()
+        items.extend(response['Items'])
+        while 'LastEvaluatedKey' in response:
+            response = hourly_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response['Items'])
+        items.sort(key=lambda x: x.get('Hour_Timestamp', ''))
+
     else:
-        # Fetch from CloudPulse_Insights table
         items    = []
         response = table.scan()
         items.extend(response['Items'])
@@ -47,5 +58,5 @@ def lambda_handler(event, context):
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
         },
-        'body': json.dumps(items, cls=DecimalEncoder)  # ✅ DecimalEncoder fixes the crash
+        'body': json.dumps(items, cls=DecimalEncoder)
     }

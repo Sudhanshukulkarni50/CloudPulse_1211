@@ -2,16 +2,34 @@ import boto3
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-# AWS Clients
 ec2 = boto3.client('ec2')
 cloudwatch = boto3.client('cloudwatch')
 sns = boto3.client('sns')
 dynamodb = boto3.resource('dynamodb')
 
-# Resources
+hourly_table = dynamodb.Table('CloudPulse_Hourly')
+
 SNS_TOPIC_ARN = "arn:aws:sns:ap-south-1:504115868738:CloudPulse_Alerts"
 table        = dynamodb.Table('CloudPulse_Insights')
-alerts_table = dynamodb.Table('CloudPulse_Alerts')   # ✅ NEW
+alerts_table = dynamodb.Table('CloudPulse_Alerts')
+
+
+def save_hourly_snapshot(instance_id, instance_name, instance_type, region, az, cpu):
+    now         = datetime.utcnow()
+    hour_ts     = now.strftime('%Y-%m-%d %H:00:00')
+    hour_of_day = now.hour
+
+    hourly_table.put_item(Item={
+        "Instance_ID":       instance_id,
+        "Hour_Timestamp":    hour_ts,
+        "Instance_Name":     instance_name,
+        "Instance_Type":     instance_type,
+        "Region":            region,
+        "Availability_Zone": az,
+        "CPU":               Decimal(str(cpu)),
+        "Hour":              str(hour_of_day),
+        "Date":              now.strftime('%Y-%m-%d')
+    })
 
 
 def get_running_instances():
@@ -30,11 +48,11 @@ def get_running_instances():
                         break
 
                 instances.append({
-                    'InstanceId':        instance['InstanceId'],
-                    'InstanceType':      instance.get('InstanceType', 'N/A'),
-                    'AvailabilityZone':  instance['Placement']['AvailabilityZone'],
-                    'Region':            ec2.meta.region_name,
-                    'InstanceName':      name
+                    'InstanceId':       instance['InstanceId'],
+                    'InstanceType':     instance.get('InstanceType', 'N/A'),
+                    'AvailabilityZone': instance['Placement']['AvailabilityZone'],
+                    'Region':           ec2.meta.region_name,
+                    'InstanceName':     name
                 })
 
     return instances
@@ -97,7 +115,6 @@ def classify_instance(cpu):
         return "Overutilized", "Consider upgrading instance type"
 
 
-# ✅ NEW — saves alert record to CloudPulse_Alerts table
 def save_alert(instance_id, instance_name, instance_type, region, az, cpu_avg, predicted_cpu, recommendation):
     alerts_table.put_item(Item={
         "Instance_ID":       instance_id,
@@ -115,8 +132,9 @@ def save_alert(instance_id, instance_name, instance_type, region, az, cpu_avg, p
 
 
 def lambda_handler(event, context):
-    instances = get_running_instances()
-    results   = []
+    instances     = get_running_instances()
+    results       = []
+    processed_ids = []
 
     for instance in instances:
         instance_id   = instance['InstanceId']
@@ -132,7 +150,6 @@ def lambda_handler(event, context):
             recent_data   = get_recent_cpu_metrics(instance_id)
             predicted_cpu = predict_future_cpu(recent_data, fallback=cpu_avg)
 
-            # Save insight to main table
             table.put_item(Item={
                 "Instance_ID":             instance_id,
                 "Instance_Name":           instance_name,
@@ -143,12 +160,18 @@ def lambda_handler(event, context):
                 "Average_CPU_Last_7_Days": Decimal(str(cpu_avg)),
                 "Predicted_CPU":           Decimal(str(predicted_cpu)),
                 "Classification":          classification,
-                "Recommendation":          recommendation
+                "Recommendation":          recommendation,
+                "Status":                  "running"   
             })
 
-            if classification == "Overutilized":
+            processed_ids.append(instance_id)
 
-                # ✅ Send SNS alert
+            save_hourly_snapshot(
+                instance_id, instance_name, instance_type,
+                region, az, cpu_avg
+            )
+
+            if classification == "Overutilized":
                 sns.publish(
                     TopicArn=SNS_TOPIC_ARN,
                     Subject="CloudPulse Alert: EC2 Instance Overutilized",
@@ -170,8 +193,6 @@ Recommendation: {recommendation}
 Timestamp: {datetime.utcnow()}
 """
                 )
-
-                # ✅ NEW — save alert to CloudPulse_Alerts table
                 save_alert(
                     instance_id, instance_name, instance_type,
                     region, az, cpu_avg, predicted_cpu, recommendation
@@ -192,6 +213,25 @@ Timestamp: {datetime.utcnow()}
         except Exception as e:
             print(f"ERROR processing {instance_id}: {e}")
             continue
+
+    existing = []
+    scan_response = table.scan()
+    existing.extend(scan_response['Items'])
+    while 'LastEvaluatedKey' in scan_response:
+        scan_response = table.scan(ExclusiveStartKey=scan_response['LastEvaluatedKey'])
+        existing.extend(scan_response['Items'])
+
+    for item in existing:
+        if item['Instance_ID'] not in processed_ids:
+            table.update_item(
+                Key={
+                    'Instance_ID': item['Instance_ID'],
+                    'Timestamp':   item['Timestamp']
+                },
+                UpdateExpression='SET #s = :s',
+                ExpressionAttributeNames={'#s': 'Status'},
+                ExpressionAttributeValues={':s': 'stopped'}
+            )
 
     return {
         "Total_Instances_Processed": len(results),
