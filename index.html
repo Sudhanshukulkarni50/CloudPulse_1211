@@ -155,7 +155,7 @@
 
   /* ─── METRIC CARDS ─── */
   .metrics-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;
     margin-bottom: 28px;
   }
   .metric-card {
@@ -481,7 +481,178 @@
     transition: var(--transition);
   }
   .view-btn:hover { background: rgba(0,212,255,.18); }
-</style>
+
+  /* ─── CPU HEATMAP ─── */
+  .heatmap-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 28px;
+    animation: fadeUp .5s ease both; overflow-x: auto;
+  }
+  .heatmap-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+  }
+  .heatmap-header h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px;
+  }
+  .heatmap-legend {
+    display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim);
+  }
+  .heatmap-legend-bar {
+    width: 120px; height: 10px; border-radius: 5px;
+    background: linear-gradient(90deg, #0d1f3c, #0066ff, #ffd600, #ff3d6e);
+  }
+  .heatmap-grid { min-width: 700px; }
+  .heatmap-hours-row {
+    display: grid; grid-template-columns: 180px repeat(24, 1fr);
+    gap: 2px; margin-bottom: 4px;
+  }
+  .heatmap-hour-label {
+    text-align: center; font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; color: var(--text-dim); padding: 2px 0;
+  }
+  .heatmap-instance-row {
+    display: grid; grid-template-columns: 180px repeat(24, 1fr);
+    gap: 2px; margin-bottom: 2px;
+  }
+  .heatmap-instance-label {
+    font-size: 11px; color: var(--text-sec); padding: 4px 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .heatmap-instance-id {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    color: var(--text-dim); margin-top: 1px;
+  }
+  .heatmap-cell {
+    height: 32px; border-radius: 3px; cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.2); z-index: 10;
+    box-shadow: 0 0 10px rgba(0,212,255,.4);
+  }
+  .heatmap-cell.empty { background: rgba(26,58,92,.3); }
+  /* Tooltip */
+  .heatmap-cell::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-panel); border: 1px solid var(--border);
+    color: var(--text-pri); font-size: 11px; padding: 5px 10px;
+    border-radius: 6px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity .2s; z-index: 100;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .heatmap-cell:hover::after { opacity: 1; }
+  .heatmap-empty {
+    text-align: center; padding: 32px;
+    color: var(--text-dim); font-size: 13px;
+  }
+  .alert-panel {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 28px;
+    animation: fadeUp .5s ease both;
+  }
+  .alert-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .alert-panel-header h3 {
+    font-family: 'Rajdhani', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-sec); letter-spacing: 1px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .alert-count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px;
+    background: rgba(255,61,110,.15); color: var(--red);
+    border: 1px solid rgba(255,61,110,.3);
+    font-size: 11px; font-weight: 700;
+  }
+  .alert-table { width: 100%; border-collapse: collapse; }
+  .alert-table thead tr { border-bottom: 1px solid var(--border); }
+  .alert-table thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-dim); font-weight: 600; white-space: nowrap;
+  }
+  .alert-table tbody tr {
+    border-bottom: 1px solid rgba(26,58,92,.4);
+    transition: var(--transition);
+  }
+  .alert-table tbody tr:hover { background: var(--bg-hover); }
+  .alert-table tbody td { padding: 11px 12px; font-size: 12px; white-space: nowrap; }
+  .alert-severity {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    font-weight: 600; letter-spacing: .5px;
+    background: rgba(255,61,110,.12); color: var(--red);
+    border: 1px solid rgba(255,61,110,.3);
+  }
+  .alert-severity-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--red); box-shadow: 0 0 6px var(--red);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .alert-empty {
+    text-align: center; padding: 32px;
+    color: var(--text-dim); font-size: 13px;
+  }
+  .alert-cpu-val { font-family: 'Share Tech Mono', monospace; color: var(--red); }
+  .alert-ts      { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .alert-name    { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+  .alert-id-wrap { display: flex; flex-direction: column; }
+  .alert-sns-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; letter-spacing: .5px;
+    background: rgba(255,214,0,.1); color: var(--yellow);
+    border: 1px solid rgba(255,214,0,.25);
+  }
+
+  /* ─── GLOBAL DATE FILTER ─── */
+  .date-filter-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; margin-bottom: 24px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .date-filter-label {
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 1px; color: var(--accent); white-space: nowrap;
+  }
+  .date-filter-input {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 14px;
+    color: var(--text-pri); font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; outline: none; cursor: pointer;
+    transition: var(--transition);
+  }
+  .date-filter-input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,212,255,.2); }
+  .date-filter-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  .btn-date-today {
+    padding: 7px 16px; border-radius: 6px; cursor: pointer;
+    background: rgba(0,212,255,.08); color: var(--accent);
+    border: 1px solid rgba(0,212,255,.25);
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 1px; transition: var(--transition);
+  }
+  .btn-date-today:hover { background: rgba(0,212,255,.18); }
+  .btn-date-clear {
+    padding: 7px 16px; border-radius: 6px; cursor: pointer;
+    background: rgba(100,150,200,.08); color: var(--text-sec);
+    border: 1px solid rgba(100,150,200,.2);
+    font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 1px; transition: var(--transition);
+  }
+  .btn-date-clear:hover { background: rgba(100,150,200,.15); }
+  .date-filter-info {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    color: var(--text-dim); margin-left: auto;
+  }
+  .date-filter-info span { color: var(--accent); }</style>
 </head>
 <body>
 
@@ -548,7 +719,7 @@
       </div>
       <div class="timestamp" id="clock">--</div>
       <button class="btn-export" onclick="exportCSV()">
-        ⬇ CSV
+        ⬇ Report
       </button>
       <button class="btn-refresh" id="refreshBtn" onclick="refreshAll()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -579,6 +750,17 @@
     <div class="arch-node"><div class="arch-icon">📦</div><div class="arch-label">S3</div></div>
   </div>
 
+  <!-- GLOBAL DATE FILTER -->
+  <div class="date-filter-bar">
+    <div class="date-filter-label">📅 DATE FILTER</div>
+    <input type="date" class="date-filter-input" id="globalDateFilter" onchange="applyDateFilter()"/>
+    <button class="btn-date-today" onclick="setToday()">Today</button>
+    <button class="btn-date-clear" onclick="clearDateFilter()">Show All</button>
+    <div class="date-filter-info" id="dateFilterInfo">
+      Showing: <span>All Data</span>
+    </div>
+  </div>
+
   <!-- METRIC CARDS -->
   <div class="section-title">Infrastructure Overview</div>
   <div class="metrics-grid" id="metricsGrid">
@@ -588,6 +770,12 @@
       <div class="metric-value" id="m-total">—</div>
       <div class="metric-sub">Monitored EC2 nodes</div>
     </div>
+  <div class="metric-card green">
+    <div class="metric-icon">▶️</div>
+    <div class="metric-label">Running Instances</div>
+    <div class="metric-value" id="m-running">—</div>
+  <div class="metric-sub">Currently active</div>
+  </div>
     <div class="metric-card yellow">
       <div class="metric-icon">⚠️</div>
       <div class="metric-label">Underutilized</div>
@@ -634,6 +822,22 @@
     <div class="chart-card">
       <h3><span style="background:var(--green)"></span> Health Distribution</h3>
       <div class="chart-wrap"><canvas id="chartPie"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CPU HEATMAP -->
+  <div class="section-title">CPU Heatmap</div>
+  <div class="heatmap-card">
+    <div class="heatmap-header">
+      <h3>🌡 Hourly CPU Heatmap — Today</h3>
+      <div class="heatmap-legend">
+        <span>Low</span>
+        <div class="heatmap-legend-bar"></div>
+        <span>High</span>
+      </div>
+    </div>
+    <div class="heatmap-grid" id="heatmapGrid">
+      <div class="heatmap-empty">Loading heatmap...</div>
     </div>
   </div>
 
@@ -711,6 +915,47 @@
     </div>
   </div>
 
+  <!-- ALERT HISTORY PANEL -->
+  <div class="section-title">Alert History</div>
+  <div class="alert-panel">
+    <div class="alert-panel-header">
+      <h3>
+        🚨 SNS Alert History
+        <span class="alert-count-badge" id="alertCount">0</span>
+      </h3>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="search-box">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6a9cc0" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="alertSearchInput" placeholder="Filter alerts..." oninput="filterAlerts()"/>
+        </div>
+        <button class="btn-export" onclick="exportAlertsCSV()" style="font-size:12px;padding:6px 14px;">
+          ⬇ Export
+        </button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="alert-table">
+        <thead>
+          <tr>
+            <th>Instance ID / Name</th>
+            <th>Type</th>
+            <th>AZ / Region</th>
+            <th>CPU at Alert</th>
+            <th>Predicted CPU</th>
+            <th>Severity</th>
+            <th>SNS</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="alertTableBody">
+          <tr><td colspan="8" class="alert-empty">Loading alerts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer>
     <span>CloudPulse</span> &nbsp;·&nbsp; Serverless Cloud Intelligence Platform &nbsp;·&nbsp; Built with <span>AWS</span>
@@ -722,9 +967,13 @@
 // ─── STATE ───────────────────────────────────────────────────────────
 let allData      = [];
 let latestData   = [];
+let alertsData   = [];   // alert history records
+let stoppedInstances = new Set(); // ← tracks manually stopped instances
 let chartLine, chartBar, chartPie, modalChart;
 const API_INSIGHTS = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/insights';
 const API_CONTROL  = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/control';
+const API_ALERTS   = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/alerts';
+const API_HEATMAP  = 'https://k363uq0dpf.execute-api.ap-south-1.amazonaws.com/heatmap';
 
 // Cost estimate: average t3.micro on-demand ~$0.0104/hr in ap-south-1
 const COST_PER_HOUR = 0.0104;
@@ -735,6 +984,7 @@ function getLatestPerInstance(data) {
   data.forEach(record => {
     const id = record.Instance_ID;
     if (!id) return;
+    if (record.Status === 'stopped') return;
     if (!map[id] || (record.Timestamp || '') > (map[id].Timestamp || '')) map[id] = record;
   });
   return Object.values(map);
@@ -824,6 +1074,53 @@ function getInstanceName(row) {
   return row.Instance_ID ? 'ec2-' + row.Instance_ID.slice(-6) : '—';
 }
 
+// ─── GLOBAL DATE FILTER ───────────────────────────────────────────────
+let activeDate = ''; // '' means show all
+
+function setToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('globalDateFilter').value = today;
+  activeDate = today;
+  applyDateFilter();
+}
+
+function clearDateFilter() {
+  document.getElementById('globalDateFilter').value = '';
+  activeDate = '';
+  applyDateFilter();
+}
+
+function applyDateFilter() {
+  activeDate = document.getElementById('globalDateFilter').value;
+
+  // Update info label
+  const info = document.getElementById('dateFilterInfo');
+  info.innerHTML = activeDate
+    ? `Showing: <span>${activeDate}</span>`
+    : `Showing: <span>All Data</span>`;
+
+  // Filter all datasets and re-render
+  const filteredInsights = filterByDate(allData,     activeDate, 'Timestamp');
+  const filteredLatest   = getLatestPerInstance(filteredInsights);
+  const filteredAlerts   = filterByDate(alertsData,  activeDate, 'Timestamp');
+  const filteredHeatmap  = filterByDate(heatmapData, activeDate, 'Date');
+
+  // Re-render everything with filtered data
+  updateMetricsWithData(filteredLatest, filteredInsights);
+  buildChartsWithData(filteredInsights, filteredLatest);
+  renderTable(filteredLatest);
+  renderHeatmap(filteredHeatmap);
+  renderAlerts(filteredAlerts);
+
+  addLog(`Date filter applied: ${activeDate || 'All Data'}`, 'info');
+}
+
+// Generic date filter — matches date string against a field
+function filterByDate(data, date, field) {
+  if (!date) return data;
+  return data.filter(d => (d[field] || '').slice(0, 10) === date);
+}
+
 // ─── COST SAVINGS ESTIMATOR ──────────────────────────────────────────
 // Assumes underutilized instances run 24/7 and could be stopped.
 // Savings = underutilized_count × COST_PER_HOUR × 24 × 30
@@ -835,21 +1132,30 @@ function calcMonthlySavings(data) {
 
 // ─── METRICS ─────────────────────────────────────────────────────────
 function updateMetrics() {
-  const total   = getUniqueInstanceIds(allData).length;
-  const under   = latestData.filter(d => classKey(d.Classification) === 'underutilized').length;
-  const over    = latestData.filter(d => classKey(d.Classification) === 'overutilized').length;
-  const healthy = latestData.filter(d => classKey(d.Classification) === 'healthy').length;
+  updateMetricsWithData(latestData, allData);
+}
 
-  const cpuValues = latestData.map(d => parseFloat(d.Average_CPU_Last_7_Days)).filter(v => !isNaN(v));
+function updateMetricsWithData(latest, all) {
+  const total   = getUniqueInstanceIds(all).length;
+
+// Running = only instances with Status running or no status yet
+const isRunning = d => !d.Status || d.Status === 'running';
+const running = latest.filter(d => isRunning(d)).length;
+const under   = latest.filter(d => isRunning(d) && classKey(d.Classification) === 'underutilized').length;
+const over    = latest.filter(d => isRunning(d) && classKey(d.Classification) === 'overutilized').length;
+const healthy = latest.filter(d => isRunning(d) && classKey(d.Classification) === 'healthy').length;
+
+  const cpuValues = latest.map(d => parseFloat(d.Average_CPU_Last_7_Days)).filter(v => !isNaN(v));
   const avgCPU = cpuValues.length
     ? (cpuValues.reduce((a,v) => a + v, 0) / cpuValues.length).toFixed(2) : '0.00';
 
-  const savings = calcMonthlySavings(latestData);
+  const savings = calcMonthlySavings(latest);
 
-  document.getElementById('m-total').textContent   = total;
-  document.getElementById('m-under').textContent   = under;
-  document.getElementById('m-healthy').textContent = healthy;
-  document.getElementById('m-over').textContent    = over;
+ document.getElementById('m-total').textContent   = total;
+ document.getElementById('m-running').textContent = running;  // ← add this
+ document.getElementById('m-under').textContent   = under;
+ document.getElementById('m-healthy').textContent = healthy;
+ document.getElementById('m-over').textContent    = over;
   document.getElementById('m-cpu').textContent     = avgCPU + '%';
   document.getElementById('m-savings').textContent = '$' + savings;
 }
@@ -860,10 +1166,13 @@ Chart.defaults.font.family = "'Exo 2', sans-serif";
 Chart.defaults.font.size   = 11;
 
 function buildCharts() {
+  buildChartsWithData(allData, latestData);
+}
+
+function buildChartsWithData(all, latest) {
   const gridColor = 'rgba(26,58,92,.5)';
 
-  // LINE — all historical sorted by timestamp
-  const sorted    = [...allData].sort((a,b) => (a.Timestamp||'').localeCompare(b.Timestamp||''));
+  const sorted     = [...all].sort((a,b) => (a.Timestamp||'').localeCompare(b.Timestamp||''));
   const lineLabels = sorted.map(d => {
     const id = d.Instance_ID ? d.Instance_ID.slice(-6) : '??';
     const ts = (d.Timestamp||'').slice(0,10);
@@ -883,10 +1192,9 @@ function buildCharts() {
                y:{grid:{color:gridColor}, min:0, ticks:{callback:v=>v+'%'}} } }
   });
 
-  // BAR — latest per instance
-  const barLabels   = latestData.map(d => getInstanceName(d));
-  const barAvgCPUs  = latestData.map(d => +(parseFloat(d.Average_CPU_Last_7_Days||0)).toFixed(4));
-  const barPredCPUs = latestData.map(d => +(parseFloat(d.Predicted_CPU||0)).toFixed(4));
+  const barLabels   = latest.map(d => getInstanceName(d));
+  const barAvgCPUs  = latest.map(d => +(parseFloat(d.Average_CPU_Last_7_Days||0)).toFixed(4));
+  const barPredCPUs = latest.map(d => +(parseFloat(d.Predicted_CPU||0)).toFixed(4));
 
   if (chartBar) chartBar.destroy();
   chartBar = new Chart(document.getElementById('chartBar'), {
@@ -901,12 +1209,11 @@ function buildCharts() {
                y:{grid:{color:gridColor}, min:0, ticks:{callback:v=>v+'%'}} } }
   });
 
-  // PIE
   const counts = {
-    Underutilized: latestData.filter(d=>classKey(d.Classification)==='underutilized').length,
-    Healthy:       latestData.filter(d=>classKey(d.Classification)==='healthy').length,
-    Overutilized:  latestData.filter(d=>classKey(d.Classification)==='overutilized').length,
-    Unknown:       latestData.filter(d=>classKey(d.Classification)==='unknown').length,
+    Underutilized: latest.filter(d=>classKey(d.Classification)==='underutilized').length,
+    Healthy:       latest.filter(d=>classKey(d.Classification)==='healthy').length,
+    Overutilized:  latest.filter(d=>classKey(d.Classification)==='overutilized').length,
+    Unknown:       latest.filter(d=>classKey(d.Classification)==='unknown').length,
   };
   const pieLabels = Object.keys(counts).filter(k=>counts[k]>0);
   const pieColors = { Underutilized:'rgba(255,214,0,.8)', Healthy:'rgba(0,255,136,.8)',
@@ -989,26 +1296,226 @@ function filterTable() {
 // ─── EXPORT CSV ───────────────────────────────────────────────────────
 function exportCSV() {
   if (!latestData.length) { showToast('No data to export', 'error', '❌'); return; }
-  const headers = ['Instance_ID','Instance_Name','Average_CPU_Last_7_Days','Predicted_CPU','Classification','Recommendation','Timestamp'];
-  const rows = latestData.map(d => [
-    d.Instance_ID||'',
-    getInstanceName(d),
-    d.Average_CPU_Last_7_Days||'',
-    d.Predicted_CPU||'',
-    d.Classification||'',
-    `"${(d.Recommendation||'').replace(/"/g,'""')}"`,
-    d.Timestamp||''
-  ].join(','));
-  const csv  = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
+
+  const date      = new Date().toISOString().slice(0, 10);
+  const total     = latestData.length;
+  const running   = latestData.filter(d => !d.Status || d.Status === 'running').length;
+  const under     = latestData.filter(d => classKey(d.Classification) === 'underutilized').length;
+  const over      = latestData.filter(d => classKey(d.Classification) === 'overutilized').length;
+  const healthy   = latestData.filter(d => classKey(d.Classification) === 'healthy').length;
+  const cpuVals   = latestData.map(d => parseFloat(d.Average_CPU_Last_7_Days||0)).filter(v => !isNaN(v));
+  const avgCPU    = cpuVals.length ? (cpuVals.reduce((a,v)=>a+v,0)/cpuVals.length).toFixed(2) : '0.00';
+  const savings   = (under * 0.0104 * 24 * 30).toFixed(2);
+  const recentAlerts = alertsData.slice(0, 5);
+
+  const instanceRows = latestData.map(d => {
+    const ck  = classKey(d.Classification);
+    const cpu = parseFloat(d.Average_CPU_Last_7_Days||0).toFixed(2);
+    const badgeColor = ck==='overutilized'?'#ff3d6e': ck==='underutilized'?'#ffd600':'#00ff88';
+    return `
+      <tr>
+        <td>${d.Instance_ID||'—'}</td>
+        <td>${d.Instance_Name||'—'}</td>
+        <td>${d.Instance_Type||'—'}</td>
+        <td>${d.Region||'—'}</td>
+        <td>${d.Availability_Zone||'—'}</td>
+        <td style="color:${badgeColor};font-weight:700">${cpu}%</td>
+        <td style="color:${badgeColor};font-weight:600">${d.Classification||'—'}</td>
+        <td>${d.Recommendation||'—'}</td>
+      </tr>`;
+  }).join('');
+
+  const alertRows = recentAlerts.map(a => `
+    <tr>
+      <td>${a.Instance_ID||'—'}</td>
+      <td>${a.Instance_Name||'—'}</td>
+      <td style="color:#ff3d6e;font-weight:700">${parseFloat(a.CPU_At_Alert||0).toFixed(2)}%</td>
+      <td>${a.Alert_Type||'—'}</td>
+      <td>${(a.Timestamp||'—').slice(0,19)}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>CloudPulse Report — ${date}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a2332; padding: 40px; }
+  .report-header {
+    background: linear-gradient(135deg, #050c14, #0a2040);
+    color: white; padding: 40px; border-radius: 16px; margin-bottom: 32px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .report-header h1 { font-size: 32px; letter-spacing: 3px; }
+  .report-header p  { color: #6a9cc0; font-size: 13px; margin-top: 6px; }
+  .report-date { text-align: right; }
+  .report-date .date { font-size: 24px; font-weight: 700; color: #00d4ff; }
+  .report-date .label { font-size: 11px; color: #6a9cc0; letter-spacing: 1px; }
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: white; border-radius: 12px; padding: 20px; text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08); border-top: 4px solid #00d4ff;
+  }
+  .kpi-card.green  { border-color: #00c97a; }
+  .kpi-card.yellow { border-color: #ffd600; }
+  .kpi-card.red    { border-color: #ff3d6e; }
+  .kpi-card.orange { border-color: #ff7c30; }
+  .kpi-card.teal   { border-color: #00e5cc; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6a9cc0; margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 700; color: #1a2332; }
+  .kpi-card.green  .kpi-value { color: #00c97a; }
+  .kpi-card.yellow .kpi-value { color: #e6b800; }
+  .kpi-card.red    .kpi-value { color: #ff3d6e; }
+  .kpi-card.orange .kpi-value { color: #ff7c30; }
+  .kpi-card.teal   .kpi-value { color: #00b8a3; }
+  .section {
+    background: white; border-radius: 12px; padding: 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08); margin-bottom: 24px;
+  }
+  .section h2 {
+    font-size: 16px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: #1a2332; margin-bottom: 20px;
+    padding-bottom: 12px; border-bottom: 2px solid #f0f4f8;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #f0f4f8; padding: 10px 14px; text-align: left;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6a9cc0;
+  }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid #f0f4f8; }
+  tbody tr:hover { background: #f8fbff; }
+  .rec-section { background: #f8fbff; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .rec-section h2 { font-size: 16px; font-weight: 700; color: #1a2332; margin-bottom: 16px; }
+  .rec-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid #e8f0f8;
+  }
+  .rec-item:last-child { border-bottom: none; }
+  .rec-icon { font-size: 20px; flex-shrink: 0; }
+  .rec-text { font-size: 13px; color: #344f6a; line-height: 1.6; }
+  .rec-text strong { color: #1a2332; }
+  .footer {
+    text-align: center; padding: 24px; color: #6a9cc0;
+    font-size: 12px; letter-spacing: 1px;
+  }
+  .footer span { color: #0066cc; font-weight: 700; }
+  @media print {
+    body { background: white; padding: 20px; }
+    .section { box-shadow: none; border: 1px solid #e0e0e0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="report-header">
+  <div>
+    <h1>☁ CLOUDPULSE</h1>
+    <p>Intelligent Cloud Infrastructure Report</p>
+    <p style="margin-top:8px;color:#4499ff;font-size:12px;">AWS EC2 Monitoring & Cost Optimization Analysis</p>
+  </div>
+  <div class="report-date">
+    <div class="label">REPORT GENERATED</div>
+    <div class="date">${date}</div>
+    <div style="color:#6a9cc0;font-size:12px;margin-top:4px;">${new Date().toLocaleTimeString()} UTC</div>
+  </div>
+</div>
+
+<!-- KPI CARDS -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Instances</div>
+    <div class="kpi-value">${total}</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">Running</div>
+    <div class="kpi-value">${running}</div>
+  </div>
+  <div class="kpi-card yellow">
+    <div class="kpi-label">Underutilized</div>
+    <div class="kpi-value">${under}</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">Healthy</div>
+    <div class="kpi-value">${healthy}</div>
+  </div>
+  <div class="kpi-card red">
+    <div class="kpi-label">Overutilized</div>
+    <div class="kpi-value">${over}</div>
+  </div>
+  <div class="kpi-card teal">
+    <div class="kpi-label">Est. Savings</div>
+    <div class="kpi-value">$${savings}</div>
+  </div>
+</div>
+
+<!-- INSTANCE TABLE -->
+<div class="section">
+  <h2>📊 Instance Details</h2>
+  <table>
+    <thead><tr>
+      <th>Instance ID</th><th>Name</th><th>Type</th>
+      <th>Region</th><th>AZ</th><th>Avg CPU</th>
+      <th>Status</th><th>Recommendation</th>
+    </tr></thead>
+    <tbody>${instanceRows}</tbody>
+  </table>
+</div>
+
+<!-- ALERT SUMMARY -->
+<div class="section">
+  <h2>🚨 Recent Alerts (Last 5)</h2>
+  ${recentAlerts.length ? `
+  <table>
+    <thead><tr>
+      <th>Instance ID</th><th>Name</th><th>CPU at Alert</th>
+      <th>Type</th><th>Timestamp</th>
+    </tr></thead>
+    <tbody>${alertRows}</tbody>
+  </table>` : '<p style="color:#6a9cc0;text-align:center;padding:20px;">No alerts recorded</p>'}
+</div>
+
+<!-- RECOMMENDATIONS -->
+<div class="rec-section">
+  <h2>✅ Recommendations</h2>
+  ${over > 0 ? `<div class="rec-item">
+    <div class="rec-icon">🔴</div>
+    <div class="rec-text"><strong>${over} instance(s) are Overutilized.</strong> Consider upgrading to a larger instance type or distributing workload across multiple instances to prevent performance degradation.</div>
+  </div>` : ''}
+  ${under > 0 ? `<div class="rec-item">
+    <div class="rec-icon">🟡</div>
+    <div class="rec-text"><strong>${under} instance(s) are Underutilized.</strong> Consider stopping or downsizing these instances. Estimated monthly savings if stopped: <strong>$${savings}</strong>.</div>
+  </div>` : ''}
+  ${healthy > 0 ? `<div class="rec-item">
+    <div class="rec-icon">🟢</div>
+    <div class="rec-text"><strong>${healthy} instance(s) are Healthy.</strong> These instances are operating within optimal CPU range. No action required.</div>
+  </div>` : ''}
+  <div class="rec-item">
+    <div class="rec-icon">💡</div>
+    <div class="rec-text"><strong>Average CPU across all instances is ${avgCPU}%.</strong> ${parseFloat(avgCPU) < 20 ? 'Overall utilization is low — consider consolidating workloads.' : parseFloat(avgCPU) > 70 ? 'Overall utilization is high — consider scaling your infrastructure.' : 'Overall utilization is within healthy range.'}</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Generated by <span>CloudPulse</span> &nbsp;·&nbsp; Serverless Cloud Intelligence Platform &nbsp;·&nbsp; Built on <span>AWS</span>
+</div>
+
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url;
-  a.download = `cloudpulse-insights-${new Date().toISOString().slice(0,10)}.csv`;
+  a.href     = url;
+  a.download = `cloudpulse-report-${date}.html`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('CSV exported successfully', 'success', '⬇');
-  addLog(`Exported ${latestData.length} instances to CSV`, 'ok');
+  showToast('Report downloaded successfully', 'success', '📊');
+  addLog(`Report generated for ${total} instances`, 'ok');
 }
 
 // ─── INSTANCE DETAIL MODAL ────────────────────────────────────────────
@@ -1105,6 +1612,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDi
 // ─── CONTROL ─────────────────────────────────────────────────────────
 async function controlInstance(instanceId, action, btn) {
   if (!instanceId) return;
+  if (action === 'stop') stoppedInstances.add(instanceId);
+  if (action === 'start') stoppedInstances.delete(instanceId);
   if (action === 'stop') {
     const confirmed = window.confirm(
       `⚠ Stop EC2 Instance?\n\nInstance: ${instanceId}\n\nAre you sure you want to stop this EC2 instance?`
@@ -1122,20 +1631,274 @@ async function controlInstance(instanceId, action, btn) {
     const txt = await res.text();
     let msg = txt;
     try { const j = JSON.parse(txt); msg = j.message || j.status || txt; } catch(e) {}
+
     if (res.ok) {
       showToast(`${action.toUpperCase()} sent → ${instanceId.slice(-8)}`, 'success', action==='start'?'▶':'⏹');
       addLog(`${action.toUpperCase()} → ${instanceId} | ${msg}`, 'ok');
+
+      // ✅ Update row visually to reflect new state
+      if (row) {
+        // Remove any existing state badge
+        const existing = row.querySelector('.instance-state-badge');
+        if (existing) existing.remove();
+
+        if (action === 'stop') {
+          // Dim the row
+          row.style.opacity = '0.55';
+          row.style.filter  = 'grayscale(0.4)';
+
+          // Add STOPPED badge next to instance ID
+          const idCell = row.querySelector('.inst-id-wrap') || row.querySelector('td');
+          const badge  = document.createElement('span');
+          badge.className   = 'instance-state-badge';
+          badge.textContent = '⏹ STOPPED';
+          badge.style.cssText = `
+            display:inline-block; margin-top:4px; padding:2px 8px;
+            border-radius:10px; font-size:10px; font-weight:700;
+            letter-spacing:1px; background:rgba(255,61,110,.15);
+            color:#ff3d6e; border:1px solid rgba(255,61,110,.35);
+          `;
+          idCell.appendChild(badge);
+
+          // Disable stop button, keep start enabled
+          btns.forEach(b => {
+            if (b.classList.contains('btn-stop'))  { b.disabled = true;  b.style.opacity = '.3'; }
+            if (b.classList.contains('btn-start')) { b.disabled = false; }
+          });
+
+        } else {
+          // STARTED — restore row
+          row.style.opacity = '1';
+          row.style.filter  = 'none';
+
+          // Add RUNNING badge
+          const idCell = row.querySelector('.inst-id-wrap') || row.querySelector('td');
+          const badge  = document.createElement('span');
+          badge.className   = 'instance-state-badge';
+          badge.textContent = '▶ RUNNING';
+          badge.style.cssText = `
+            display:inline-block; margin-top:4px; padding:2px 8px;
+            border-radius:10px; font-size:10px; font-weight:700;
+            letter-spacing:1px; background:rgba(0,255,136,.15);
+            color:#00ff88; border:1px solid rgba(0,255,136,.35);
+          `;
+          idCell.appendChild(badge);
+
+          // Re-enable both buttons
+          btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+        }
+      }
+
     } else {
       showToast(`Failed to ${action}: ${msg}`, 'error', '❌');
       addLog(`FAILED ${action.toUpperCase()} → ${instanceId}`, 'error');
+      btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
     }
   } catch(err) {
     showToast(`Network error: ${err.message}`, 'error', '🔌');
     addLog(`NETWORK ERROR → ${instanceId}`, 'error');
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
   } finally {
-    btns.forEach(b => b.disabled = false);
+    // Reset button text only (state handled above)
     btn.textContent = action === 'start' ? '▶ Start' : '⏹ Stop';
   }
+}
+
+// ─── HEATMAP ──────────────────────────────────────────────────────────
+let heatmapData = [];
+
+async function fetchHeatmap() {
+  const res  = await fetch(API_HEATMAP);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+}
+
+// Returns a color based on CPU % — dark blue → blue → yellow → red
+function heatColor(cpu) {
+  if (cpu === null || cpu === undefined) return 'rgba(26,58,92,.3)';
+  if (cpu < 5)   return '#0d1f3c';
+  if (cpu < 20)  return '#0a3a6e';
+  if (cpu < 40)  return '#0066cc';
+  if (cpu < 60)  return '#0099ff';
+  if (cpu < 70)  return '#ffd600';
+  if (cpu < 85)  return '#ff7c30';
+  return '#ff3d6e';
+}
+
+function renderHeatmap(data) {
+  const grid = document.getElementById('heatmapGrid');
+
+  if (!data.length) {
+    grid.innerHTML = '<div class="heatmap-empty">⏳ No hourly data yet — run Lambda to populate.</div>';
+    return;
+  }
+
+  // Get today's date
+const useData = data;
+
+  // Build map: instanceId → { hourNum → cpu }
+  const instanceMap = {};
+  const nameMap     = {};
+
+  useData.forEach(d => {
+    const id   = d.Instance_ID;
+    const hour = parseInt(d.Hour || 0);
+    const cpu  = parseFloat(d.CPU || 0);
+    if (!instanceMap[id]) instanceMap[id] = {};
+    instanceMap[id][hour] = cpu;
+    nameMap[id] = d.Instance_Name || ('ec2-' + id.slice(-6));
+  });
+
+  const instanceIds = Object.keys(instanceMap).sort();
+  const hours       = Array.from({ length: 24 }, (_, i) => i); // 0-23
+
+  // Build HTML
+  let html = '';
+
+  // Hour labels row
+  html += '<div class="heatmap-hours-row">';
+  html += '<div class="heatmap-hour-label"></div>'; // empty corner
+  hours.forEach(h => {
+    html += `<div class="heatmap-hour-label">${String(h).padStart(2,'0')}</div>`;
+  });
+  html += '</div>';
+
+  // Instance rows
+  instanceIds.forEach(id => {
+    const name = nameMap[id];
+    html += '<div class="heatmap-instance-row">';
+    html += `<div class="heatmap-instance-label">
+      <span>${name}</span>
+      <span class="heatmap-instance-id">${id.slice(-12)}</span>
+    </div>`;
+
+    hours.forEach(h => {
+      const cpu   = instanceMap[id][h];
+      const color = cpu !== undefined ? heatColor(cpu) : null;
+      const tip   = cpu !== undefined
+        ? `${name} | ${String(h).padStart(2,'0')}:00 | CPU: ${cpu.toFixed(2)}%`
+        : `${name} | ${String(h).padStart(2,'0')}:00 | No data`;
+
+      if (color) {
+        html += `<div class="heatmap-cell" style="background:${color}" data-tip="${tip}"></div>`;
+      } else {
+        html += `<div class="heatmap-cell empty" data-tip="${tip}"></div>`;
+      }
+    });
+
+    html += '</div>';
+  });
+
+  grid.innerHTML = html;
+}
+
+// ─── ALERT HISTORY ────────────────────────────────────────────────────
+async function fetchAlerts() {
+  const res  = await fetch(API_ALERTS);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const arr  = Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+  // Sort newest first
+  return arr.sort((a, b) => (b.Timestamp || '').localeCompare(a.Timestamp || ''));
+}
+
+function renderAlerts(data) {
+  const tbody = document.getElementById('alertTableBody');
+  const badge = document.getElementById('alertCount');
+  badge.textContent = data.length;
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="alert-empty">
+      ✅ No alerts fired yet — all instances are within normal range.
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(row => {
+    const cpuVal  = parseFloat(row.CPU_At_Alert  || 0).toFixed(2);
+    const predVal = parseFloat(row.Predicted_CPU || 0).toFixed(2);
+    const name    = (row.Instance_Name && row.Instance_Name !== 'N/A')
+                    ? row.Instance_Name : 'ec2-' + (row.Instance_ID||'').slice(-6);
+    const az      = row.Availability_Zone || '—';
+    const region  = row.Region            || '—';
+    const type    = row.Instance_Type     || '—';
+    const ts      = (row.Timestamp || '—').replace('T', ' ').slice(0, 19);
+    const sns     = row.SNS_Sent === 'true' ? '✅ Sent' : '—';
+
+    return `<tr>
+      <td>
+        <div class="alert-id-wrap">
+          <span class="mono">${row.Instance_ID || '—'}</span>
+          <span class="alert-name">🏷 ${name}</span>
+        </div>
+      </td>
+      <td style="color:var(--text-sec);font-size:12px;">${type}</td>
+      <td style="color:var(--text-sec);font-size:11px;">${az}<br><span style="color:var(--text-dim)">${region}</span></td>
+      <td><span class="alert-cpu-val">${cpuVal}%</span></td>
+      <td><span style="font-family:'Share Tech Mono',monospace;color:#4499ff">${predVal}%</span></td>
+      <td><div class="alert-severity"><div class="alert-severity-dot"></div>${row.Alert_Type || 'Overutilized'}</div></td>
+      <td><span class="alert-sns-badge">${sns}</span></td>
+      <td><span class="alert-ts">${ts}</span></td>
+    </tr>`;
+  }).join('');
+    stoppedInstances.forEach(id => {
+    const rows = document.querySelectorAll('#tableBody tr');
+    rows.forEach(row => {
+      if (row.innerHTML.includes(id)) {
+        row.style.opacity = '0.55';
+        row.style.filter  = 'grayscale(0.4)';
+        const idCell = row.querySelector('.inst-id-wrap');
+        if (idCell && !idCell.querySelector('.instance-state-badge')) {
+          const badge = document.createElement('span');
+          badge.className   = 'instance-state-badge';
+          badge.textContent = '⏹ STOPPED';
+          badge.style.cssText = `
+            display:inline-block; margin-top:4px; padding:2px 8px;
+            border-radius:10px; font-size:10px; font-weight:700;
+            letter-spacing:1px; background:rgba(255,61,110,.15);
+            color:#ff3d6e; border:1px solid rgba(255,61,110,.35);
+          `;
+          idCell.appendChild(badge);
+          row.querySelectorAll('.btn-stop').forEach(b => { b.disabled = true; b.style.opacity = '.3'; });
+        }
+      }
+    });
+  });
+}
+
+
+function filterAlerts() {
+  const q = document.getElementById('alertSearchInput').value.toLowerCase();
+  const filtered = q ? alertsData.filter(d =>
+    (d.Instance_ID   || '').toLowerCase().includes(q) ||
+    (d.Instance_Name || '').toLowerCase().includes(q) ||
+    (d.Alert_Type    || '').toLowerCase().includes(q) ||
+    (d.Region        || '').toLowerCase().includes(q)
+  ) : alertsData;
+  renderAlerts(filtered);
+}
+
+function exportAlertsCSV() {
+  if (!alertsData.length) { showToast('No alerts to export', 'error', '❌'); return; }
+  const headers = ['Instance_ID','Instance_Name','Instance_Type','Availability_Zone','Region',
+                   'CPU_At_Alert','Predicted_CPU','Alert_Type','SNS_Sent','Timestamp'];
+  const rows = alertsData.map(d => [
+    d.Instance_ID||'', d.Instance_Name||'', d.Instance_Type||'',
+    d.Availability_Zone||'', d.Region||'',
+    d.CPU_At_Alert||'', d.Predicted_CPU||'',
+    d.Alert_Type||'', d.SNS_Sent||'', d.Timestamp||''
+  ].join(','));
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `cloudpulse-alerts-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Alerts exported successfully', 'success', '⬇');
+  addLog(`Exported ${alertsData.length} alert(s) to CSV`, 'ok');
 }
 
 // ─── FETCH ───────────────────────────────────────────────────────────
@@ -1155,14 +1918,27 @@ async function refreshAll() {
   updateCountdownUI();
 
   try {
-    const rawData  = await fetchInsights();
-    allData        = rawData;
-    latestData     = getLatestPerInstance(rawData);
-    const unique   = latestData.length;
+    // Fetch insights, alerts and heatmap in parallel
+    const [rawData, rawAlerts, rawHeatmap] = await Promise.all([
+      fetchInsights(),
+      fetchAlerts().catch(err => { addLog(`Alerts fetch failed: ${err.message}`, 'warn'); return []; }),
+      fetchHeatmap().catch(err => { addLog(`Heatmap fetch failed: ${err.message}`, 'warn'); return []; })
+    ]);
+
+    allData     = rawData;
+    latestData  = getLatestPerInstance(rawData);
+    alertsData  = rawAlerts;
+    heatmapData = rawHeatmap;
+
+    const unique = latestData.length;
+
     updateMetrics();
     buildCharts();
     renderTable(latestData);
-    addLog(`Loaded ${rawData.length} record(s) across ${unique} unique instance(s).`, 'ok');
+    renderHeatmap(heatmapData);
+    renderAlerts(alertsData);
+
+    addLog(`Loaded ${rawData.length} record(s), ${rawAlerts.length} alert(s), ${rawHeatmap.length} hourly point(s).`, 'ok');
     showToast(`Dashboard refreshed — ${unique} instance(s)`, 'success', '✅');
   } catch(err) {
     showToast('Failed to fetch insights: ' + err.message, 'error', '❌');
